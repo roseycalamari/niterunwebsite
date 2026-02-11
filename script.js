@@ -23,6 +23,7 @@
     drawScribbles();
     mobileMenu();
     buttonInteractions();
+    backToTop();
   }
 
   /* ==========================
@@ -38,8 +39,11 @@
     if (!navItems.length) return;
 
     var prevScroll = 0;
-    var threshold = 100;
-    var state = 'visible'; /* 'visible' | 'hidden' */
+    var threshold = 100;       /* px from top — always show nav near top */
+    var deltaThreshold = 60;   /* px of scroll in one direction before triggering */
+    var accumulated = 0;       /* tracks cumulative scroll in current direction */
+    var lastDir = null;        /* last scroll direction */
+    var state = 'visible';     /* 'visible' | 'hidden' */
 
     function hideItems() {
       if (state === 'hidden') return;
@@ -86,15 +90,30 @@
 
     window.addEventListener('scroll', function () {
       var scrollY = window.scrollY || window.pageYOffset;
-      var dir = scrollY > prevScroll ? 'down' : 'up';
+      var delta = scrollY - prevScroll;
+      var dir = delta > 0 ? 'down' : 'up';
 
       if (scrollY < threshold) {
         /* Near top — always show everything */
+        accumulated = 0;
         showItems();
-      } else if (dir === 'down') {
-        hideItems();
       } else {
-        showItems();
+        /* Reset accumulator when direction changes */
+        if (dir !== lastDir) {
+          accumulated = 0;
+          lastDir = dir;
+        }
+
+        accumulated += Math.abs(delta);
+
+        /* Only trigger after scrolling enough in one direction */
+        if (accumulated >= deltaThreshold) {
+          if (dir === 'down') {
+            hideItems();
+          } else {
+            showItems();
+          }
+        }
       }
 
       prevScroll = scrollY;
@@ -319,13 +338,56 @@
   }
 
   /* ==========================
+     BACK TO TOP
+     ========================== */
+  function backToTop() {
+    var btn = document.getElementById('backToTop');
+    if (!btn) return;
+
+    var isVisible = false;
+    var showAfter = 600; /* px scrolled before button appears */
+
+    window.addEventListener('scroll', function () {
+      var scrollY = window.scrollY || window.pageYOffset;
+
+      if (scrollY > showAfter && !isVisible) {
+        isVisible = true;
+        gsap.to(btn, {
+          opacity: 1,
+          y: 0,
+          visibility: 'visible',
+          duration: 0.4,
+          ease: 'power3.out',
+          overwrite: true
+        });
+      } else if (scrollY <= showAfter && isVisible) {
+        isVisible = false;
+        gsap.to(btn, {
+          opacity: 0,
+          y: 20,
+          duration: 0.3,
+          ease: 'power3.in',
+          overwrite: true,
+          onComplete: function () {
+            btn.style.visibility = 'hidden';
+          }
+        });
+      }
+    }, { passive: true });
+
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  /* ==========================
      BUTTON INTERACTIONS
      ========================== */
   function buttonInteractions() {
     document.querySelectorAll('.btn').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         var href = btn.getAttribute('href');
-        if (!href || !href.startsWith('#')) {
+        if (href === '#') {
           e.preventDefault();
         }
         gsap.fromTo(btn,

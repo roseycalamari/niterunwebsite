@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nite-Run — Dashboard</title>
+  <meta name="description" content="Build balanced teams for your pickup football game.">
+  <link rel="icon" type="image/svg+xml" href="assets/images/icons/saviconniterun.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__top">
+      <a href="index.html" class="sidebar__logo">
+        <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="sidebar__logo-img">
+      </a>
+      <nav class="sidebar__nav">
+        <button class="sidebar__link sidebar__link--active" data-view="dashboard">
+          <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="sidebar__link" data-view="profile">
+          <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Profile</span>
+        </button>
+        <button class="sidebar__link" data-view="settings">
+          <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+    </div>
+    <div class="sidebar__bottom">
+      <a href="index.html" class="sidebar__link sidebar__link--back">
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Back to Site</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ====== MOBILE BOTTOM TAB BAR ====== -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tabbar__btn tabbar__btn--active" data-view="dashboard">
+      <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="tabbar__btn" data-view="profile">
+      <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+    <button class="tabbar__btn" data-view="settings">
+      <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- ====== MAIN WRAPPER ====== -->
+  <div class="app">
+
+    <!-- ====== TOP BAR ====== -->
+    <header class="topbar">
+      <a href="index.html" class="topbar__logo">
+        <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="topbar__logo-img">
+      </a>
+      <h1 class="topbar__title" id="pageTitle">Dashboard</h1>
+      <div class="topbar__right">
+        <button class="topbar__search" id="searchToggle" aria-label="Search">
+          <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <div class="topbar__user">
+          <span class="topbar__name">Player</span>
+          <div class="topbar__avatar">P</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ====== CONTENT AREA ====== -->
+    <main class="content">
+
+      <!-- ── DASHBOARD HUB ── -->
+      <section class="view view--active" id="view-dashboard">
+        <div class="hub">
+          <button class="hub__panel hub__panel--session" data-subview="session">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title">Create Session</h2>
+              <p class="hub__desc">Add players, rate skills, and generate balanced teams.</p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
+          <button class="hub__panel hub__panel--stats" data-subview="stats">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title">My Stats</h2>
+              <p class="hub__desc">Track your sessions, players, and balancing history.</p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
+          <button class="hub__panel hub__panel--groups" data-subview="groups">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title">Groups</h2>
+              <p class="hub__desc">Manage your squads and save regular player groups.</p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
+          <div class="hub__panel hub__panel--store hub__panel--locked">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-3-5z"/><line x1="3" y1="7" x2="21" y2="7"/><path d="M16 11a4 4 0 0 1-8 0"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title">Store</h2>
+              <p class="hub__desc">Gear, kits, and extras for your squad.</p>
+            </div>
+            <span class="hub__badge-soon">Coming Soon</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── CREATE SESSION (sub-view) ── -->
+      <section class="view" id="view-session">
+        <button class="back-btn" data-back="dashboard">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Dashboard
+        </button>
+
+        <!-- Step Indicator -->
+        <div class="wizard__steps">
+          <div class="wizard__step wizard__step--active" data-step-indicator="1">
+            <span class="wizard__step-num">1</span>
+            <span class="wizard__step-label">Match Info</span>
+          </div>
+          <div class="wizard__step-line"></div>
+          <div class="wizard__step" data-step-indicator="2">
+            <span class="wizard__step-num">2</span>
+            <span class="wizard__step-label">Teams</span>
+          </div>
+          <div class="wizard__step-line"></div>
+          <div class="wizard__step" data-step-indicator="3">
+            <span class="wizard__step-num">3</span>
+            <span class="wizard__step-label">Players</span>
+          </div>
+        </div>
+
+        <!-- STEP 1: Match Info -->
+        <div class="wizard__panel wizard__panel--active" id="wizardStep1">
+          <div class="card card--add">
+            <h2 class="card__title">Match Details</h2>
+            <div class="wiz-form">
+              <div class="wiz-form__group">
+                <label class="wiz-form__label" for="sessionVenue">Venue</label>
+                <input class="wiz-form__input" type="text" id="sessionVenue" placeholder="e.g. Riverside Pitch" autocomplete="off" required>
+              </div>
+              <div class="wiz-form__row">
+                <div class="wiz-form__group">
+                  <label class="wiz-form__label" for="sessionDate">Date</label>
+                  <input class="wiz-form__input" type="date" id="sessionDate">
+                </div>
+                <div class="wiz-form__group">
+                  <label class="wiz-form__label" for="sessionTime">Time</label>
+                  <input class="wiz-form__input" type="time" id="sessionTime">
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn--primary btn--large btn--generate" id="wizardNext1">
+            Next: Team Setup <span class="btn__arrow">→</span>
+          </button>
+        </div>
+
+        <!-- STEP 2: Team Configuration -->
+        <div class="wizard__panel" id="wizardStep2">
+          <div class="card">
+            <h2 class="card__title">Team Configuration</h2>
+            <p class="wiz-form__hint">How many teams and players per team?</p>
+            <div class="team-config">
+              <div class="team-config__group">
+                <label class="wiz-form__label" for="numTeams">Teams</label>
+                <div class="stepper">
+                  <button class="stepper__btn" data-stepper="numTeams" data-dir="-1">−</button>
+                  <input class="stepper__val" type="number" id="numTeams" value="2" min="2" max="8" readonly>
+                  <button class="stepper__btn" data-stepper="numTeams" data-dir="1">+</button>
+                </div>
+              </div>
+              <span class="team-config__of">of</span>
+              <div class="team-config__group">
+                <label class="wiz-form__label" for="playersPerTeam">Players each</label>
+                <div class="stepper">
+                  <button class="stepper__btn" data-stepper="playersPerTeam" data-dir="-1">−</button>
+                  <input class="stepper__val" type="number" id="playersPerTeam" value="5" min="2" max="15" readonly>
+                  <button class="stepper__btn" data-stepper="playersPerTeam" data-dir="1">+</button>
+                </div>
+              </div>
+            </div>
+            <p class="team-config__summary" id="teamSummary">2 teams × 5 players = 10 players needed</p>
+          </div>
+          <div class="wizard__nav-row">
+            <button class="btn btn--secondary" id="wizardBack2">
+              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Back
+            </button>
+            <button class="btn btn--primary btn--large" id="wizardNext2" style="flex:1">
+              Next: Add Players <span class="btn__arrow">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Player Input -->
+        <div class="wizard__panel" id="wizardStep3">
+          <div class="card card--add">
+            <div class="card__header">
+              <h2 class="card__title">Add Player</h2>
+              <span class="card__count card__count--light" id="playerProgress">0 / 10</span>
+            </div>
+            <form class="add-form" id="addPlayerForm">
+              <div class="add-form__fields add-form__fields--wizard">
+                <div class="add-form__group">
+                  <label class="add-form__label" for="playerName">Name</label>
+                  <input class="add-form__input" type="text" id="playerName" placeholder="e.g. Marcus" autocomplete="off" required>
+                </div>
+                <div class="add-form__group">
+                  <label class="add-form__label" for="playerRating">Level <span class="add-form__rating-val" id="ratingVal">5</span></label>
+                  <input class="add-form__range" type="range" id="playerRating" min="1" max="10" value="5">
+                  <div class="add-form__range-labels">
+                    <span>1</span>
+                    <span>10</span>
+                  </div>
+                </div>
+              </div>
+              <div class="add-form__group">
+                <label class="add-form__label">Position</label>
+                <div class="pos-picker" id="posPicker">
+                  <button type="button" class="pos-picker__btn pos-picker__btn--active" data-pos="HYB">
+                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    <span>Hybrid</span>
+                  </button>
+                  <button type="button" class="pos-picker__btn" data-pos="ATK">
+                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Attacker</span>
+                  </button>
+                  <button type="button" class="pos-picker__btn" data-pos="DEF">
+                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Defender</span>
+                  </button>
+                  <button type="button" class="pos-picker__btn" data-pos="GK">
+                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M6 8H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/><rect x="6" y="4" width="12" height="16" rx="1"/></svg>
+                    <span>Goalkeeper</span>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="btn btn--primary add-form__submit">Add Player <span class="btn__arrow">+</span></button>
+            </form>
+          </div>
+
+          <!-- Player Roster -->
+          <div class="card">
+            <div class="card__header">
+              <h2 class="card__title">Player Roster</h2>
+              <span class="card__count" id="playerCount">0 players</span>
+            </div>
+            <div class="roster" id="roster">
+              <p class="roster__empty" id="rosterEmpty">No players yet. Add someone above to get started.</p>
+            </div>
+          </div>
+
+          <div class="wizard__nav-row">
+            <button class="btn btn--secondary" id="wizardBack3">
+              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Back
+            </button>
+            <button class="btn btn--primary btn--large btn--generate" id="generateBtn" disabled style="flex:1">
+              Generate Teams <span class="btn__arrow">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- RESULTS -->
+        <div class="wizard__panel" id="wizardResults" style="display:none;">
+          <div class="results__header">
+            <h2 class="results__title">Your Teams</h2>
+            <div class="results__meta" id="resultsMeta"></div>
+          </div>
+          <div class="results-grid" id="resultsGrid"></div>
+          <div class="wizard__nav-row" style="margin-top:var(--space-md)">
+            <button class="btn btn--secondary" id="resultsBack">
+              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Edit Players
+            </button>
+            <button class="btn btn--primary btn--large" id="resultsNewSession" style="flex:1">
+              New Session <span class="btn__arrow">+</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── MY STATS (sub-view) ── -->
+      <section class="view" id="view-stats">
+        <button class="back-btn" data-back="dashboard">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Dashboard
+        </button>
+
+        <div class="card card--profile">
+          <div class="profile__header">
+            <div class="profile__avatar">P</div>
+            <div class="profile__info">
+              <h2 class="profile__name">Player</h2>
+              <p class="profile__meta">Member since 2026</p>
+            </div>
+          </div>
+          <div class="profile__divider"></div>
+          <div class="profile__stats">
+            <div class="profile__stat">
+              <span class="profile__stat-val" id="statPlayers">0</span>
+              <span class="profile__stat-label">Players Added</span>
+            </div>
+            <div class="profile__stat">
+              <span class="profile__stat-val" id="statGames">0</span>
+              <span class="profile__stat-label">Teams Generated</span>
+            </div>
+            <div class="profile__stat">
+              <span class="profile__stat-val" id="statGroups">0</span>
+              <span class="profile__stat-label">Groups</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── GROUPS (sub-view) ── -->
+      <section class="view" id="view-groups">
+        <button class="back-btn" data-back="dashboard">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Dashboard
+        </button>
+
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title">My Groups</h2>
+            <button class="btn btn--primary btn--sm" id="createGroupBtn">New Group <span class="btn__arrow">+</span></button>
+          </div>
+          <div id="groupsList">
+            <p class="roster__empty" id="groupsEmpty">No groups yet. Create one to save your regular squads.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SEARCH VIEW ── -->
+      <section class="view" id="view-search">
+        <div class="search-bar">
+          <svg class="search-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-bar__input" type="text" id="searchInput" placeholder="Search players, groups..." autocomplete="off">
+          <button class="search-bar__close" id="searchClose" aria-label="Close search">×</button>
+        </div>
+        <div class="search-results" id="searchResults">
+          <p class="search-results__hint">Start typing to search for players and groups.</p>
+        </div>
+      </section>
+
+      <!-- ── PROFILE VIEW ── -->
+      <section class="view" id="view-profile">
+        <div class="card card--profile">
+          <div class="profile__header">
+            <div class="profile__avatar">P</div>
+            <div class="profile__info">
+              <h2 class="profile__name">Player</h2>
+              <p class="profile__meta">Member since 2026</p>
+            </div>
+          </div>
+          <div class="profile__divider"></div>
+          <div class="profile__stats">
+            <div class="profile__stat">
+              <span class="profile__stat-val" id="statPlayers2">0</span>
+              <span class="profile__stat-label">Players Added</span>
+            </div>
+            <div class="profile__stat">
+              <span class="profile__stat-val" id="statGames2">0</span>
+              <span class="profile__stat-label">Teams Generated</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SETTINGS VIEW ── -->
+      <section class="view" id="view-settings">
+        <div class="card">
+          <h2 class="card__title">Preferences</h2>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Dark Mode</span>
+              <span class="setting-row__desc">Switch to a darker colour scheme</span>
+            </div>
+            <div class="toggle">
+              <input type="checkbox" class="toggle__input" id="toggleDark">
+              <label class="toggle__track" for="toggleDark"></label>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Notifications</span>
+              <span class="setting-row__desc">Get alerts for match reminders</span>
+            </div>
+            <div class="toggle">
+              <input type="checkbox" class="toggle__input" id="toggleNotifs">
+              <label class="toggle__track" for="toggleNotifs"></label>
+            </div>
+          </div>
+          <div class="setting-row setting-row--last">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Auto-save Roster</span>
+              <span class="setting-row__desc">Persist player data between sessions</span>
+            </div>
+            <div class="toggle">
+              <input type="checkbox" class="toggle__input" id="toggleAutosave" checked>
+              <label class="toggle__track" for="toggleAutosave"></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Danger Zone</h2>
+          <div class="setting-row setting-row--last">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Clear All Data</span>
+              <span class="setting-row__desc">Remove all saved players and history</span>
+            </div>
+            <button class="btn btn--danger" id="clearDataBtn">Clear <span class="btn__arrow">×</span></button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

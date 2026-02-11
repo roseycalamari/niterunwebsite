@@ -23,7 +23,7 @@
       <a href="#how" class="topnav__link">How It Works</a>
       <a href="#features" class="topnav__link">Features</a>
       <a href="#cta" class="topnav__link">Get Started</a>
-      <a href="#" class="btn btn--nav">Launch App <span class="btn__arrow">→</span></a>
+      <a href="app.html" class="btn btn--nav">Launch App <span class="btn__arrow">→</span></a>
     </div>
     <!-- Mobile toggle -->
     <button class="topnav__burger" id="navToggle" aria-label="Open menu">
@@ -39,7 +39,7 @@
       <a href="#how" class="offcanvas__link">How It Works</a>
       <a href="#features" class="offcanvas__link">Features</a>
       <a href="#cta" class="offcanvas__link">Get Started</a>
-      <a href="#" class="btn btn--primary btn--large offcanvas__cta">Launch App <span class="btn__arrow">→</span></a>
+      <a href="app.html" class="btn btn--primary btn--large offcanvas__cta">Launch App <span class="btn__arrow">→</span></a>
     </div>
   </div>
 
@@ -55,7 +55,7 @@
         </h1>
         <p class="hero__sub" data-reveal>Instantly create balanced teams for your pickup game.<br>No more politics. Just football.</p>
         <div class="hero__actions" data-reveal>
-          <a href="#" class="btn btn--primary btn--large">Launch App <span class="btn__arrow">→</span></a>
+          <a href="app.html" class="btn btn--primary btn--large">Launch App <span class="btn__arrow">→</span></a>
         </div>
       </div>
     </section>
@@ -168,7 +168,7 @@
         </h2>
         <p class="cta__sub" data-reveal>Your next game is waiting.</p>
         <div class="cta__actions" data-reveal>
-          <a href="#" class="btn btn--secondary btn--large">Launch App <span class="btn__arrow">→</span></a>
+          <a href="app.html" class="btn btn--secondary btn--large">Launch App <span class="btn__arrow">→</span></a>
         </div>
       </div>
     </section>
@@ -177,16 +177,34 @@
 
   <!-- ====== FOOTER ====== -->
   <footer class="footer">
-    <div class="footer__inner">
+    <div class="footer__top">
       <div class="footer__brand">
         <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="footer__logo" loading="lazy">
         <p class="footer__tagline">Draft Smarter. Play Harder.</p>
       </div>
-      <div class="footer__bottom">
-        <p class="footer__copy">&copy; 2026 Nite-Run. All rights reserved.</p>
+      <div class="footer__right">
+        <nav class="footer__nav">
+          <a href="#problem" class="footer__link">The Problem</a>
+          <a href="#how" class="footer__link">How It Works</a>
+          <a href="#features" class="footer__link">Features</a>
+          <a href="#cta" class="footer__link">Get Started</a>
+        </nav>
+        <div class="footer__cta">
+          <a href="app.html" class="btn btn--primary">Launch App <span class="btn__arrow">→</span></a>
+        </div>
       </div>
     </div>
+    <div class="footer__divider"></div>
+    <div class="footer__bottom">
+      <p class="footer__copy">&copy; 2026 Nite-Run. All rights reserved.</p>
+      <p class="footer__credit">Built for the pitch.</p>
+    </div>
   </footer>
+
+  <!-- ====== BACK TO TOP ====== -->
+  <button class="back-to-top" id="backToTop" aria-label="Back to top">
+    <span class="back-to-top__arrow">↑</span>
+  </button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
