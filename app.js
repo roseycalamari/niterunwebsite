@@ -15,6 +15,7 @@
   var previousView = null;
   var selectedPosition = 'HYB';
   var currentWizardStep = 1;
+  var modalCallback = null;
 
   var STORAGE_KEY = 'niterun_players';
   var GAMES_KEY = 'niterun_games';
@@ -35,6 +36,7 @@
     setupGenerate();
     setupGroups();
     setupClearData();
+    setupModal();
     renderRoster();
     updateStats();
   });
@@ -72,6 +74,7 @@
     els.groupsList = document.getElementById('groupsList');
     els.groupsEmpty = document.getElementById('groupsEmpty');
     els.createGroupBtn = document.getElementById('createGroupBtn');
+    els.generateLoading = document.getElementById('generateLoading');
   }
 
   /* ---------- LOCAL STORAGE ---------- */
@@ -433,6 +436,8 @@
 
       if (!name) return;
 
+      var wasEdit = (editingId !== null);
+
       if (editingId !== null) {
         /* Update existing player */
         var player = players.find(function (p) { return p.id === editingId; });
@@ -455,6 +460,7 @@
 
       saveData();
       renderRoster();
+      showToast(wasEdit ? name + ' updated' : name + ' added', 'success');
       els.addForm.reset();
       els.ratingVal.textContent = '5';
       els.playerName.focus();
@@ -486,9 +492,10 @@
 
     var posLabels = { HYB: 'HYB', ATK: 'ATK', DEF: 'DEF', GK: 'GK' };
 
-    players.forEach(function (player) {
+    players.forEach(function (player, idx) {
       var item = document.createElement('div');
       item.className = 'roster__item';
+      item.style.animationDelay = (idx * 40) + 'ms';
 
       var initial = player.name.charAt(0).toUpperCase();
       var posTag = posLabels[player.position] || 'HYB';
@@ -545,9 +552,12 @@
   }
 
   function deletePlayer(id) {
+    var player = players.find(function (p) { return p.id === id; });
+    var pName = player ? player.name : 'Player';
     players = players.filter(function (p) { return p.id !== id; });
     saveData();
     renderRoster();
+    showToast(pName + ' removed', 'info');
   }
 
   /* ---------- TEAM GENERATION (Position-Aware Balanced Draft) ---------- */
@@ -580,80 +590,93 @@
   function generateTeams() {
     var nTeams = parseInt(els.numTeams.value, 10);
     var ppt = parseInt(els.playersPerTeam.value, 10);
-    var pool = players.slice();
 
-    /* Initialize empty teams */
-    var teams = [];
-    for (var t = 0; t < nTeams; t++) {
-      teams.push({ players: [], effTotal: 0, uiTotal: 0 });
+    /* Show loading state */
+    if (els.generateBtn) els.generateBtn.disabled = true;
+    document.querySelectorAll('.wizard__panel').forEach(function (p) {
+      p.classList.remove('wizard__panel--active');
+    });
+    var stepsEl = document.querySelector('.wizard__steps');
+    if (stepsEl) stepsEl.style.display = 'none';
+    if (els.generateLoading) {
+      els.generateLoading.style.display = '';
+      var bar = els.generateLoading.querySelector('.generate-loading__bar-fill');
+      if (bar) { bar.style.animation = 'none'; bar.offsetHeight; bar.style.animation = ''; }
     }
 
-    /* --- Phase 1: Distribute goalkeepers evenly ---
-       Sort GKs by effective score descending, assign each to the team
-       with the fewest GKs (then lowest effTotal to break ties). */
-    var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
-    var others = pool.filter(function (p) { return p.position !== 'GK'; });
+    setTimeout(function () {
+      if (els.generateLoading) els.generateLoading.style.display = 'none';
+      if (els.generateBtn) els.generateBtn.disabled = false;
 
-    goalkeepers.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
+      var pool = players.slice();
 
-    goalkeepers.forEach(function (gk) {
-      var bestTeam = null;
-      var bestGkCount = Infinity;
-      var bestEff = Infinity;
+      /* Initialize empty teams */
+      var teams = [];
+      for (var t = 0; t < nTeams; t++) {
+        teams.push({ players: [], effTotal: 0, uiTotal: 0 });
+      }
 
-      for (var i = 0; i < teams.length; i++) {
-        if (teams[i].players.length >= ppt) continue;
-        var gkCount = teams[i].players.filter(function (p) { return p.position === 'GK'; }).length;
-        if (gkCount < bestGkCount || (gkCount === bestGkCount && teams[i].effTotal < bestEff)) {
-          bestTeam = i;
-          bestGkCount = gkCount;
-          bestEff = teams[i].effTotal;
+      /* --- Phase 1: Distribute goalkeepers evenly --- */
+      var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
+      var others = pool.filter(function (p) { return p.position !== 'GK'; });
+
+      goalkeepers.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
+
+      goalkeepers.forEach(function (gk) {
+        var bestTeam = null;
+        var bestGkCount = Infinity;
+        var bestEff = Infinity;
+
+        for (var i = 0; i < teams.length; i++) {
+          if (teams[i].players.length >= ppt) continue;
+          var gkCount = teams[i].players.filter(function (p) { return p.position === 'GK'; }).length;
+          if (gkCount < bestGkCount || (gkCount === bestGkCount && teams[i].effTotal < bestEff)) {
+            bestTeam = i;
+            bestGkCount = gkCount;
+            bestEff = teams[i].effTotal;
+          }
         }
-      }
 
-      if (bestTeam !== null) {
-        teams[bestTeam].players.push(gk);
-        teams[bestTeam].effTotal += effectiveScore(gk);
-        teams[bestTeam].uiTotal += gk.rating;
-      }
-    });
-
-    /* --- Phase 2: Balanced draft for remaining players ---
-       Sort by effective score descending.
-       Each player goes to the team with fewest players,
-       then lowest effective total to break ties.
-       This naturally spreads positions because hybrids carry
-       more weight than attackers, keeping teams balanced. */
-    others.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
-
-    others.forEach(function (player) {
-      var bestTeam = null;
-      var bestCount = Infinity;
-      var bestEff = Infinity;
-
-      for (var i = 0; i < teams.length; i++) {
-        if (teams[i].players.length >= ppt) continue;
-        var count = teams[i].players.length;
-        if (count < bestCount || (count === bestCount && teams[i].effTotal < bestEff)) {
-          bestTeam = i;
-          bestCount = count;
-          bestEff = teams[i].effTotal;
+        if (bestTeam !== null) {
+          teams[bestTeam].players.push(gk);
+          teams[bestTeam].effTotal += effectiveScore(gk);
+          teams[bestTeam].uiTotal += gk.rating;
         }
-      }
+      });
 
-      if (bestTeam !== null) {
-        teams[bestTeam].players.push(player);
-        teams[bestTeam].effTotal += effectiveScore(player);
-        teams[bestTeam].uiTotal += player.rating;
-      }
-    });
+      /* --- Phase 2: Balanced draft for remaining players --- */
+      others.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
 
-    /* --- Phase 3: Render --- */
-    renderResults(teams);
+      others.forEach(function (player) {
+        var bestTeam = null;
+        var bestCount = Infinity;
+        var bestEff = Infinity;
 
-    /* Track games */
-    gamesGenerated++;
-    saveData();
+        for (var i = 0; i < teams.length; i++) {
+          if (teams[i].players.length >= ppt) continue;
+          var count = teams[i].players.length;
+          if (count < bestCount || (count === bestCount && teams[i].effTotal < bestEff)) {
+            bestTeam = i;
+            bestCount = count;
+            bestEff = teams[i].effTotal;
+          }
+        }
+
+        if (bestTeam !== null) {
+          teams[bestTeam].players.push(player);
+          teams[bestTeam].effTotal += effectiveScore(player);
+          teams[bestTeam].uiTotal += player.rating;
+        }
+      });
+
+      /* --- Phase 3: Render --- */
+      renderResults(teams);
+
+      /* Track games */
+      gamesGenerated++;
+      saveData();
+      showToast('Teams balanced!', 'success');
+    }, 700);
   }
 
   function renderResults(teams) {
@@ -713,17 +736,23 @@
     if (!els.createGroupBtn) return;
 
     els.createGroupBtn.addEventListener('click', function () {
-      var name = prompt('Enter a name for the new group:');
-      if (!name || !name.trim()) return;
-
-      groups.push({
-        id: Date.now() + Math.random(),
-        name: name.trim(),
-        players: []
+      showModal({
+        title: 'New Group',
+        inputMode: true,
+        placeholder: 'e.g. Tuesday Night Crew',
+        confirmText: 'Create',
+        onConfirm: function (val) {
+          if (!val || !val.trim()) return;
+          groups.push({
+            id: Date.now() + Math.random(),
+            name: val.trim(),
+            players: []
+          });
+          saveData();
+          renderGroups();
+          showToast(val.trim() + ' created', 'success');
+        }
       });
-
-      saveData();
-      renderGroups();
     });
 
     renderGroups();
@@ -768,9 +797,12 @@
     els.groupsList.querySelectorAll('.roster__btn--delete[data-group-id]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var id = parseFloat(btn.getAttribute('data-group-id'));
+        var group = groups.find(function (g) { return g.id === id; });
+        var gName = group ? group.name : 'Group';
         groups = groups.filter(function (g) { return g.id !== id; });
         saveData();
         renderGroups();
+        showToast(gName + ' removed', 'info');
       });
     });
   }
@@ -779,17 +811,25 @@
   function setupClearData() {
     if (!els.clearDataBtn) return;
     els.clearDataBtn.addEventListener('click', function () {
-      if (!confirm('This will remove all saved players, groups, and history. Are you sure?')) return;
-      players = [];
-      groups = [];
-      gamesGenerated = 0;
-      editingId = null;
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(GAMES_KEY);
-      localStorage.removeItem(GROUPS_KEY);
-      renderRoster();
-      renderGroups();
-      updateStats();
+      showModal({
+        title: 'Clear All Data',
+        message: 'This will remove all saved players, groups, and history. This cannot be undone.',
+        danger: true,
+        confirmText: 'Clear Everything',
+        onConfirm: function () {
+          players = [];
+          groups = [];
+          gamesGenerated = 0;
+          editingId = null;
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(GAMES_KEY);
+          localStorage.removeItem(GROUPS_KEY);
+          renderRoster();
+          renderGroups();
+          updateStats();
+          showToast('All data cleared', 'danger');
+        }
+      });
     });
   }
 
@@ -800,6 +840,77 @@
     if (els.statGroups) els.statGroups.textContent = groups.length;
     if (els.statPlayers2) els.statPlayers2.textContent = players.length;
     if (els.statGames2) els.statGames2.textContent = gamesGenerated;
+  }
+
+  /* ---------- TOAST ---------- */
+  function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+    var toast = document.createElement('div');
+    toast.className = 'toast toast--' + (type || 'info');
+    toast.textContent = message;
+    container.appendChild(toast);
+    toast.addEventListener('animationend', function (e) {
+      if (e.animationName === 'toastOut') toast.remove();
+    });
+  }
+
+  /* ---------- MODAL ---------- */
+  function setupModal() {
+    var overlay = document.getElementById('modalOverlay');
+    var cancelBtn = document.getElementById('modalCancel');
+    var confirmBtn = document.getElementById('modalConfirm');
+    var input = document.getElementById('modalInput');
+
+    if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
+    if (overlay) overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) hideModal();
+    });
+    if (confirmBtn) confirmBtn.addEventListener('click', function () {
+      if (modalCallback) modalCallback(input ? input.value : '');
+      hideModal();
+    });
+    if (input) input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (modalCallback) modalCallback(input.value);
+        hideModal();
+      }
+    });
+  }
+
+  function showModal(opts) {
+    var overlay = document.getElementById('modalOverlay');
+    var title = document.getElementById('modalTitle');
+    var message = document.getElementById('modalMessage');
+    var input = document.getElementById('modalInput');
+    var confirmBtn = document.getElementById('modalConfirm');
+
+    if (title) title.textContent = opts.title || '';
+    if (message) {
+      message.textContent = opts.message || '';
+      message.style.display = opts.message ? '' : 'none';
+    }
+    if (input) {
+      input.style.display = opts.inputMode ? '' : 'none';
+      input.placeholder = opts.placeholder || '';
+      input.value = '';
+    }
+    if (confirmBtn) {
+      confirmBtn.textContent = opts.confirmText || 'Confirm';
+      confirmBtn.className = opts.danger ? 'btn btn--danger btn--sm' : 'btn btn--primary btn--sm';
+    }
+    modalCallback = opts.onConfirm || null;
+    if (overlay) overlay.classList.add('modal-overlay--active');
+    if (opts.inputMode && input) {
+      setTimeout(function () { input.focus(); }, 150);
+    }
+  }
+
+  function hideModal() {
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.classList.remove('modal-overlay--active');
+    modalCallback = null;
   }
 
   /* ---------- HELPERS ---------- */

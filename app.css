@@ -466,6 +466,7 @@ h1, h2, h3, h4 {
 
 .view--active {
   display: block;
+  animation: viewFadeIn 0.3s var(--ease-out) both;
 }
 
 /* ===================================
@@ -897,6 +898,7 @@ h1, h2, h3, h4 {
 
 .wizard__panel--active {
   display: block;
+  animation: panelSlideIn 0.3s var(--ease-out) both;
 }
 
 .wizard__nav-row {
@@ -1599,6 +1601,277 @@ h1, h2, h3, h4 {
 :focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 3px;
+}
+
+/* ===================================
+   MODAL
+   =================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(17, 17, 17, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal {
+  background: var(--cream);
+  border: 2px solid var(--black);
+  box-shadow: 8px 8px 0 var(--black);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  width: 100%;
+  max-width: 420px;
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.3s var(--ease-bounce);
+}
+
+.modal-overlay--active .modal {
+  transform: translateY(0) scale(1);
+}
+
+.modal__title {
+  font-size: clamp(1.1rem, 1.5vw, 1.3rem);
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-sm);
+}
+
+.modal__message {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  opacity: 0.6;
+  margin-bottom: var(--space-md);
+}
+
+.modal__input {
+  width: 100%;
+  font-family: var(--ff-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--black);
+  background: var(--cream);
+  color: var(--black);
+  outline: none;
+  margin-bottom: var(--space-md);
+  transition: box-shadow 0.2s ease;
+}
+
+.modal__input::placeholder {
+  color: var(--black);
+  opacity: 0.35;
+}
+
+.modal__input:focus {
+  box-shadow: 3px 3px 0 var(--black);
+}
+
+.modal__actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+/* ===================================
+   TOAST NOTIFICATIONS
+   =================================== */
+.toast-container {
+  position: fixed;
+  top: calc(var(--topbar-h) + var(--space-sm));
+  right: var(--space-sm);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  pointer-events: none;
+}
+
+.toast {
+  font-family: var(--ff-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1.2rem;
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 var(--black);
+  pointer-events: auto;
+  animation: toastIn 0.35s var(--ease-bounce) forwards, toastOut 0.3s ease 2.5s forwards;
+}
+
+.toast--success {
+  background: var(--blue);
+  color: var(--cream);
+}
+
+.toast--info {
+  background: var(--black);
+  color: var(--cream);
+}
+
+.toast--danger {
+  background: var(--red);
+  color: var(--cream);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* ===================================
+   VIEW & PANEL TRANSITIONS
+   =================================== */
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ===================================
+   MICRO-INTERACTIONS
+   =================================== */
+@keyframes itemSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.roster__item {
+  animation: itemSlideIn 0.25s var(--ease-out) both;
+}
+
+.team-card {
+  animation: cardPopIn 0.4s var(--ease-bounce) both;
+}
+
+.team-card:nth-child(1) { animation-delay: 0ms; }
+.team-card:nth-child(2) { animation-delay: 80ms; }
+.team-card:nth-child(3) { animation-delay: 160ms; }
+.team-card:nth-child(4) { animation-delay: 240ms; }
+.team-card:nth-child(5) { animation-delay: 320ms; }
+.team-card:nth-child(6) { animation-delay: 400ms; }
+.team-card:nth-child(7) { animation-delay: 480ms; }
+.team-card:nth-child(8) { animation-delay: 560ms; }
+
+@keyframes cardPopIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ===================================
+   LOADING STATE (team generation)
+   =================================== */
+.generate-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) 0;
+  gap: var(--space-sm);
+}
+
+.generate-loading__text {
+  font-family: var(--ff-body);
+  font-weight: 800;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--black);
+  animation: loadPulse 0.6s ease infinite alternate;
+}
+
+@keyframes loadPulse {
+  from { opacity: 0.25; }
+  to   { opacity: 1; }
+}
+
+.generate-loading__bar {
+  width: 140px;
+  height: 4px;
+  background: rgba(47, 47, 47, 0.1);
+  border: 1px solid var(--black);
+  overflow: hidden;
+}
+
+.generate-loading__bar-fill {
+  width: 0;
+  height: 100%;
+  background: var(--blue);
+  animation: loadBar 0.65s var(--ease-out) forwards;
+}
+
+@keyframes loadBar {
+  to { width: 100%; }
+}
+
+/* ===================================
+   EMPTY STATES (enhanced)
+   =================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.empty-state__icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-sm);
+  opacity: 0.2;
+  stroke: var(--black);
+}
+
+.empty-state__text {
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.4;
+}
+
+.empty-state__sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.3rem;
+  opacity: 0.25;
+}
+
+/* ---- Mobile adjustments for new components ---- */
+@media (max-width: 768px) {
+  .toast-container {
+    top: auto;
+    bottom: calc(80px + var(--space-sm));
+    right: var(--space-sm);
+    left: var(--space-sm);
+  }
+
+  .toast {
+    text-align: center;
+  }
 }
 
 /* ===================================

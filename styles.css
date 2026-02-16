@@ -548,7 +548,7 @@ h1, h2, h3, h4 {
 /* Problem solution block */
 .problem__solution {
   padding: 0 var(--pad-container);
-  max-width: 960px;
+  max-width: 1200px;
 }
 
 .problem__title {
