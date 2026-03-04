@@ -58,7 +58,12 @@
             </div>
             <div class="auth-field">
               <label class="wiz-form__label" for="authPassword">Password</label>
-              <input class="wiz-form__input" type="password" id="authPassword" autocomplete="current-password" required placeholder="Min. 6 characters">
+              <input class="wiz-form__input" type="password" id="authPassword" autocomplete="current-password" required placeholder="Min. 8 characters">
+              <div class="auth-pw-reqs" id="pwReqs">
+                <span class="auth-pw-req" id="pwReqLength">8+ characters</span>
+                <span class="auth-pw-req" id="pwReqUpper">1 uppercase</span>
+                <span class="auth-pw-req" id="pwReqNumber">1 number</span>
+              </div>
             </div>
 
             <p class="auth-error" id="authError"></p>

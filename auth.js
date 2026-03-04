@@ -25,11 +25,16 @@
   var brandSub = document.getElementById('brandSub');
 
   var forgotBtn = document.getElementById('forgotPassword');
+  var pwReqs = document.getElementById('pwReqs');
+  var pwReqLength = document.getElementById('pwReqLength');
+  var pwReqUpper = document.getElementById('pwReqUpper');
+  var pwReqNumber = document.getElementById('pwReqNumber');
 
   var mode = 'login';
   var isRegistering = false;
   var usernameAvailable = false;
   var usernameCheckTimer = null;
+  var passwordValid = false;
 
   /* ---------- DARK MODE (respect saved preference) ---------- */
   try {
@@ -67,7 +72,9 @@
       /* Update button */
       submitBtn.innerHTML = 'Log In <span class="btn__arrow">\u2192</span>';
       passwordInput.autocomplete = 'current-password';
+      passwordInput.placeholder = 'Your password';
       if (forgotBtn) forgotBtn.style.display = '';
+      if (pwReqs) pwReqs.classList.remove('auth-pw-reqs--visible');
 
       /* Update branding text */
       if (brandTitle) brandTitle.textContent = 'Welcome Back';
@@ -85,7 +92,10 @@
       /* Update button */
       submitBtn.innerHTML = 'Create Account <span class="btn__arrow">\u2192</span>';
       passwordInput.autocomplete = 'new-password';
+      passwordInput.placeholder = 'Min. 8 characters';
       if (forgotBtn) forgotBtn.style.display = 'none';
+      if (pwReqs) pwReqs.classList.add('auth-pw-reqs--visible');
+      validatePassword(passwordInput.value);
 
       /* Update branding text */
       if (brandTitle) brandTitle.textContent = 'Join Nite-Run';
@@ -152,6 +162,28 @@
     if (state === 'checking') usernameStatus.classList.add('auth-username-status--checking');
   }
 
+  /* ---------- PASSWORD VALIDATION ---------- */
+  if (passwordInput) {
+    passwordInput.addEventListener('input', function () {
+      validatePassword(passwordInput.value);
+    });
+  }
+
+  function validatePassword(pw) {
+    if (mode !== 'register') return;
+    if (!pwReqs) return;
+
+    var hasLength = pw.length >= 8;
+    var hasUpper = /[A-Z]/.test(pw);
+    var hasNumber = /[0-9]/.test(pw);
+
+    pwReqLength.classList.toggle('auth-pw-req--pass', hasLength);
+    pwReqUpper.classList.toggle('auth-pw-req--pass', hasUpper);
+    pwReqNumber.classList.toggle('auth-pw-req--pass', hasNumber);
+
+    passwordValid = hasLength && hasUpper && hasNumber;
+  }
+
   /* ---------- FORM SUBMIT ---------- */
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -185,6 +217,11 @@
       }
       if (!usernameAvailable) {
         errorEl.textContent = 'That username is not available.';
+        submitBtn.disabled = false;
+        return;
+      }
+      if (!passwordValid) {
+        errorEl.textContent = 'Password needs 8+ characters, 1 uppercase letter, and 1 number.';
         submitBtn.disabled = false;
         return;
       }

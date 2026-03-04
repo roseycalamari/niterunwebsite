@@ -2,11 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: any authenticated user can read (search/profiles).
-    // Owner can create/update own doc. Other authenticated users can update
-    // limited fields (friends, friendCount, sessionsPlayed) for social features.
+    // Users: any user can read (unauthenticated reads needed for username
+    // availability checks during registration). Owner can create/update own doc.
+    // Other authenticated users can update social fields only.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null
                     && (request.auth.uid == userId
