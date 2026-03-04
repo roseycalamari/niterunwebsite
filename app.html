@@ -16,9 +16,9 @@
   <!-- ====== SIDEBAR ====== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar__top">
-      <a href="index.html" class="sidebar__logo">
+      <button class="sidebar__logo" data-view="dashboard">
         <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="sidebar__logo-img">
-      </a>
+      </button>
       <nav class="sidebar__nav">
         <button class="sidebar__link sidebar__link--active" data-view="dashboard">
           <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -63,16 +63,34 @@
 
     <!-- ====== TOP BAR ====== -->
     <header class="topbar">
-      <a href="index.html" class="topbar__logo">
+      <button class="topbar__logo" data-view="dashboard">
         <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="topbar__logo-img">
-      </a>
+      </button>
       <h1 class="topbar__title" id="pageTitle">Dashboard</h1>
       <div class="topbar__right">
         <button class="topbar__search" id="searchToggle" aria-label="Search">
           <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
+        <div class="notif-wrap">
+          <button class="topbar__notif" id="notifToggle" aria-label="Notifications">
+            <svg class="topbar__notif-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="notif-badge" id="notifBadge"></span>
+          </button>
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-dropdown__header">
+              <span class="notif-dropdown__title">Notifications</span>
+              <button class="notif-dropdown__clear" id="notifClearAll">Clear all</button>
+            </div>
+            <div class="notif-dropdown__list" id="notifList">
+              <p class="notif-dropdown__empty">No notifications</p>
+            </div>
+          </div>
+        </div>
         <div class="topbar__user">
-          <span class="topbar__name">Player</span>
+          <div class="topbar__user-info">
+            <span class="topbar__name">Player</span>
+            <span class="topbar__username" id="topbarUsername"></span>
+          </div>
           <div class="topbar__avatar">P</div>
         </div>
       </div>
@@ -116,6 +134,12 @@
             </div>
             <span class="hub__badge-soon">Coming Soon</span>
           </div>
+        </div>
+
+        <!-- Live Sessions -->
+        <div class="live-sessions" id="liveSessions">
+          <h2 class="live-sessions__title">Live Sessions</h2>
+          <div class="live-sessions__grid" id="liveSessionsGrid"></div>
         </div>
       </section>
 
@@ -216,8 +240,11 @@
             <form class="add-form" id="addPlayerForm">
               <div class="add-form__fields add-form__fields--wizard">
                 <div class="add-form__group">
-                  <label class="add-form__label" for="playerName">Name</label>
-                  <input class="add-form__input" type="text" id="playerName" placeholder="e.g. Marcus" autocomplete="off" required>
+                  <label class="add-form__label" for="playerName">Name <span class="add-form__hint">type @ to find accounts</span></label>
+                  <div class="mention-wrap">
+                    <input class="add-form__input" type="text" id="playerName" placeholder="e.g. Marcus or @username" autocomplete="off" required>
+                    <div class="mention-dropdown" id="mentionDropdown"></div>
+                  </div>
                 </div>
                 <div class="add-form__group">
                   <label class="add-form__label" for="playerRating">Level <span class="add-form__rating-val" id="ratingVal">5</span></label>
@@ -309,28 +336,26 @@
           Back to Dashboard
         </button>
 
-        <div class="card card--profile">
-          <div class="profile__header">
-            <div class="profile__avatar">P</div>
-            <div class="profile__info">
-              <h2 class="profile__name">Player</h2>
-              <p class="profile__meta">Member since 2026</p>
-            </div>
+        <div class="profile__grid">
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span class="card--stat__val" id="statSessions">0</span>
+            <span class="card--stat__label">Sessions</span>
           </div>
-          <div class="profile__divider"></div>
-          <div class="profile__stats">
-            <div class="profile__stat">
-              <span class="profile__stat-val" id="statPlayers">0</span>
-              <span class="profile__stat-label">Players Added</span>
-            </div>
-            <div class="profile__stat">
-              <span class="profile__stat-val" id="statGames">0</span>
-              <span class="profile__stat-label">Teams Generated</span>
-            </div>
-            <div class="profile__stat">
-              <span class="profile__stat-val" id="statGroups">0</span>
-              <span class="profile__stat-label">Groups</span>
-            </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="card--stat__val" id="statPlayers">0</span>
+            <span class="card--stat__label">Players Added</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="card--stat__val" id="statGroups">0</span>
+            <span class="card--stat__label">Groups</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span class="card--stat__val" id="statGames">0</span>
+            <span class="card--stat__label">Teams Generated</span>
           </div>
         </div>
       </section>
@@ -371,26 +396,54 @@
 
       <!-- ── PROFILE VIEW ── -->
       <section class="view" id="view-profile">
-        <div class="card card--profile">
-          <div class="profile__header">
-            <div class="profile__avatar">P</div>
-            <div class="profile__info">
-              <h2 class="profile__name">Player</h2>
-              <p class="profile__meta">Member since 2026</p>
+
+        <!-- Hero card — avatar + identity -->
+        <div class="card card--profile card--profile-hero">
+          <div class="profile__hero">
+            <div class="profile__avatar-wrap" id="avatarUploadWrap">
+              <div class="profile__avatar profile__avatar--lg" id="profileAvatarLg">P</div>
+              <div class="profile__avatar-overlay">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <input type="file" id="avatarInput" accept="image/*" class="profile__avatar-input">
             </div>
+            <h2 class="profile__name">Player</h2>
+            <p class="profile__username" id="profileUsername"></p>
+            <p class="profile__meta">Member since 2026</p>
           </div>
-          <div class="profile__divider"></div>
-          <div class="profile__stats">
-            <div class="profile__stat">
-              <span class="profile__stat-val" id="statPlayers2">0</span>
-              <span class="profile__stat-label">Players Added</span>
-            </div>
-            <div class="profile__stat">
-              <span class="profile__stat-val" id="statGames2">0</span>
-              <span class="profile__stat-label">Teams Generated</span>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="profile__grid profile__grid--three">
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span class="card--stat__val" id="statSessions2">0</span>
+            <span class="card--stat__label">Sessions</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="card--stat__val" id="statFriends">0</span>
+            <span class="card--stat__label">Friends</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="card--stat__val" id="statMvps">0</span>
+            <span class="card--stat__label">MVPs</span>
+          </div>
+        </div>
+
+        <!-- Session History -->
+        <div class="card">
+          <h2 class="card__title">Session History</h2>
+          <div id="sessionHistory">
+            <div class="empty-state">
+              <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span class="empty-state__text">No sessions yet</span>
+              <span class="empty-state__sub">Your session history will show up here</span>
             </div>
           </div>
         </div>
+
       </section>
 
       <!-- ── SETTINGS VIEW ── -->
@@ -417,6 +470,16 @@
               <label class="toggle__track" for="toggleNotifs"></label>
             </div>
           </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Email notifications</span>
+              <span class="setting-row__desc">Receive emails for friend requests, session invites, MVP, etc.</span>
+            </div>
+            <div class="toggle">
+              <input type="checkbox" class="toggle__input" id="toggleEmailNotifs" checked>
+              <label class="toggle__track" for="toggleEmailNotifs"></label>
+            </div>
+          </div>
           <div class="setting-row setting-row--last">
             <div class="setting-row__text">
               <span class="setting-row__label">Auto-save Roster</span>
@@ -430,15 +493,51 @@
         </div>
 
         <div class="card">
-          <h2 class="card__title">Danger Zone</h2>
+          <h2 class="card__title">Account</h2>
+          <div class="setting-row setting-row--stacked">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Display Name</span>
+              <span class="setting-row__desc">How others see you on the app</span>
+            </div>
+            <div class="setting-row__edit">
+              <input type="text" class="setting-row__input" id="editDisplayName" maxlength="30" placeholder="Your name">
+              <button class="btn btn--primary btn--sm" id="saveDisplayName">Save</button>
+            </div>
+          </div>
           <div class="setting-row setting-row--last">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Password</span>
+              <span class="setting-row__desc">We'll send a link to your email to change it</span>
+            </div>
+            <button class="btn btn--secondary btn--sm" id="resetPasswordBtn">Change Password <span class="btn__arrow">→</span></button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Danger Zone</h2>
+          <div class="setting-row">
             <div class="setting-row__text">
               <span class="setting-row__label">Clear All Data</span>
               <span class="setting-row__desc">Remove all saved players and history</span>
             </div>
             <button class="btn btn--danger" id="clearDataBtn">Clear <span class="btn__arrow">×</span></button>
           </div>
+          <div class="setting-row setting-row--last">
+            <div class="setting-row__text">
+              <span class="setting-row__label">Log Out</span>
+              <span class="setting-row__desc">Sign out of your account</span>
+            </div>
+            <button class="btn btn--secondary btn--sm" id="logoutBtn">Log Out <span class="btn__arrow">→</span></button>
+          </div>
         </div>
+      </section>
+
+      <!-- ── USER PROFILE VIEW (other users / own friends list) ── -->
+      <section class="view" id="view-user">
+        <div class="uview__topbar">
+          <button class="uview__back" id="uviewBack">&larr; Back</button>
+        </div>
+        <div id="uviewContent"></div>
       </section>
 
     </main>
@@ -446,6 +545,17 @@
 
   <!-- Toast Notifications -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Session Detail Overlay -->
+  <div class="modal-overlay" id="sessionDetailOverlay">
+    <div class="modal session-detail-modal">
+      <div class="session-detail-modal__header">
+        <h3 class="modal__title" id="sessionDetailTitle"></h3>
+        <button class="session-detail-modal__x" id="sessionDetailClose">&times;</button>
+      </div>
+      <div class="session-detail-modal__body" id="sessionDetailBody"></div>
+    </div>
+  </div>
 
   <!-- Modal -->
   <div class="modal-overlay" id="modalOverlay">
@@ -459,6 +569,13 @@
       </div>
     </div>
   </div>
+
+  <!-- Firebase SDK (compat — no build tools needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
 
   <script src="app.js"></script>
 </body>

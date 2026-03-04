@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nite-Run — Sign In</title>
+  <meta name="description" content="Sign in or create an account to start drafting teams.">
+  <link rel="icon" type="image/svg+xml" href="assets/images/icons/saviconniterun.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+  <main class="auth-page">
+    <div class="auth-card">
+
+      <!-- LEFT PANEL — Branding (desktop) / Top strip (mobile) -->
+      <div class="auth-brand">
+        <div class="auth-brand__inner">
+          <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="auth-brand__logo">
+          <h2 class="auth-brand__title" id="brandTitle">Welcome Back</h2>
+          <p class="auth-brand__sub" id="brandSub">Sign in to draft smarter.</p>
+        </div>
+        <a href="index.html" class="auth-brand__back">← Back to site</a>
+      </div>
+
+      <!-- RIGHT PANEL — Form -->
+      <div class="auth-form-panel">
+
+        <!-- Tabs -->
+        <div class="auth-tabs">
+          <button class="auth-tab auth-tab--active" id="tabLogin">Log In</button>
+          <button class="auth-tab" id="tabRegister">Create Account</button>
+          <div class="auth-tab__indicator" id="tabIndicator"></div>
+        </div>
+
+        <!-- Form wrapper with transition -->
+        <div class="auth-form-wrap" id="authFormWrap">
+          <form id="authForm" class="auth-form" autocomplete="on" novalidate>
+            <div class="auth-field auth-field--name" id="nameGroup">
+              <label class="wiz-form__label" for="authName">Display Name</label>
+              <input class="wiz-form__input" type="text" id="authName" autocomplete="name" placeholder="e.g. Marcus">
+            </div>
+            <div class="auth-field auth-field--name" id="usernameGroup">
+              <label class="wiz-form__label" for="authUsername">Username <span class="auth-field__hint">lowercase, no spaces</span></label>
+              <div class="auth-username-wrap">
+                <span class="auth-username-at">@</span>
+                <input class="wiz-form__input auth-username-input" type="text" id="authUsername" autocomplete="off" placeholder="e.g. marcus23">
+              </div>
+              <p class="auth-username-status" id="usernameStatus"></p>
+            </div>
+            <div class="auth-field">
+              <label class="wiz-form__label" for="authEmail">Email</label>
+              <input class="wiz-form__input" type="email" id="authEmail" autocomplete="email" required placeholder="you@example.com">
+            </div>
+            <div class="auth-field">
+              <label class="wiz-form__label" for="authPassword">Password</label>
+              <input class="wiz-form__input" type="password" id="authPassword" autocomplete="current-password" required placeholder="Min. 6 characters">
+            </div>
+
+            <p class="auth-error" id="authError"></p>
+
+            <button type="submit" class="btn btn--primary btn--large auth-submit" id="authSubmit">
+              Log In <span class="btn__arrow">→</span>
+            </button>
+
+            <button type="button" class="auth-forgot" id="forgotPassword">Forgot password?</button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="auth.js"></script>
+</body>
+</html>
