@@ -18,6 +18,7 @@
   var selectedPlayerPhoto = null;
   var currentWizardStep = 1;
   var modalCallback = null;
+  var pendingSession = null;
 
   var STORAGE_KEY = 'niterun_players';
   var GAMES_KEY = 'niterun_games';
@@ -1707,14 +1708,30 @@
     var back3 = document.getElementById('wizardBack3');
     if (back3) back3.addEventListener('click', function () { goToWizardStep(2); });
 
-    /* Results ← back to edit */
+    /* Results ← back to re-shuffle */
     var resultsBack = document.getElementById('resultsBack');
     if (resultsBack) resultsBack.addEventListener('click', function () {
+      pendingSession = null;
       var resultsPanel = document.getElementById('wizardResults');
       if (resultsPanel) resultsPanel.style.display = 'none';
       var stepsEl = document.querySelector('.wizard__steps');
       if (stepsEl) stepsEl.style.display = '';
       goToWizardStep(3);
+    });
+
+    /* Confirm & Go Live */
+    var confirmBtn = document.getElementById('resultsConfirm');
+    if (confirmBtn) confirmBtn.addEventListener('click', function () {
+      if (!pendingSession) return;
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = 'Going Live\u2026';
+
+      saveSessionToFirestore(pendingSession.teams, pendingSession.nTeams, pendingSession.ppt);
+
+      confirmBtn.innerHTML = '\u2713 Session is Live';
+      confirmBtn.classList.add('btn--confirmed');
+      pendingSession = null;
+      showToast('Session is now live!', 'success');
     });
 
     /* New session from results */
@@ -2143,10 +2160,16 @@
       gamesGenerated++;
       saveData();
 
-      /* --- Phase 4: Write session to Firestore --- */
-      saveSessionToFirestore(teams, nTeams, ppt);
+      /* Store pending — don't go live until user confirms */
+      pendingSession = { teams: teams, nTeams: nTeams, ppt: ppt };
+      var confirmBtn = document.getElementById('resultsConfirm');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Confirm & Go Live <span class="btn__arrow">\u2192</span>';
+        confirmBtn.classList.remove('btn--confirmed');
+      }
 
-      showToast('Teams balanced!', 'success');
+      showToast('Teams balanced! Review and confirm to go live.', 'success');
     }, 700);
   }
 

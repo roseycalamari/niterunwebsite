@@ -184,6 +184,13 @@ h1, h2, h3, h4 {
   box-shadow: 4px 4px 0 var(--black) !important;
 }
 
+.btn--confirmed {
+  background-color: #22c55e;
+  color: var(--cream);
+  opacity: 1 !important;
+  cursor: default;
+}
+
 /* ===================================
    SIDEBAR
    =================================== */

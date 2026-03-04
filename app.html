@@ -312,13 +312,18 @@
             <div class="results__meta" id="resultsMeta"></div>
           </div>
           <div class="results-grid" id="resultsGrid"></div>
-          <div class="wizard__nav-row" style="margin-top:var(--space-md)">
-            <button class="btn btn--secondary" id="resultsBack">
-              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Edit Players
+          <div class="results__actions" style="margin-top:var(--space-md);display:flex;flex-direction:column;gap:var(--space-sm);">
+            <button class="btn btn--primary btn--large" id="resultsConfirm" style="width:100%;justify-content:center;">
+              Confirm & Go Live <span class="btn__arrow">→</span>
             </button>
-            <button class="btn btn--primary btn--large" id="resultsNewSession" style="flex:1">
-              New Session <span class="btn__arrow">+</span>
-            </button>
+            <div class="wizard__nav-row">
+              <button class="btn btn--secondary" id="resultsBack">
+                <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Re-shuffle
+              </button>
+              <button class="btn btn--secondary" id="resultsNewSession" style="flex:1">
+                New Session <span class="btn__arrow">+</span>
+              </button>
+            </div>
           </div>
         </div>
 
