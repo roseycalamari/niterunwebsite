@@ -1354,6 +1354,91 @@
       });
     }
 
+    /* Email: show current + change */
+    var currentEmailDisplay = document.getElementById('currentEmailDisplay');
+    var editEmailInput = document.getElementById('editEmail');
+    var saveEmailBtn = document.getElementById('saveEmail');
+    var emailNote = document.getElementById('emailNote');
+
+    if (currentEmailDisplay && currentUser) {
+      currentEmailDisplay.textContent = currentUser.email || 'No email set';
+    }
+
+    if (saveEmailBtn && editEmailInput) {
+      saveEmailBtn.addEventListener('click', function () {
+        var newEmail = editEmailInput.value.trim();
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+        if (!newEmail) {
+          setEmailNote('Enter a new email address.', 'error');
+          return;
+        }
+        if (!emailRegex.test(newEmail)) {
+          setEmailNote('Please enter a valid email address.', 'error');
+          return;
+        }
+        if (newEmail === currentUser.email) {
+          setEmailNote('That\'s already your current email.', 'error');
+          return;
+        }
+
+        setEmailNote('', '');
+
+        showModal({
+          title: 'Confirm Password',
+          message: 'Re-enter your password to change your email.',
+          inputMode: true,
+          inputType: 'password',
+          placeholder: 'Your current password',
+          confirmText: 'Confirm',
+          onConfirm: function (password) {
+            if (!password) {
+              setEmailNote('Password is required.', 'error');
+              return;
+            }
+
+            var credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
+
+            currentUser.reauthenticateWithCredential(credential)
+              .then(function () {
+                return currentUser.updateEmail(newEmail);
+              })
+              .then(function () {
+                return db.collection('users').doc(currentUser.uid).update({ email: newEmail });
+              })
+              .then(function () {
+                if (currentEmailDisplay) currentEmailDisplay.textContent = newEmail;
+                editEmailInput.value = '';
+                setEmailNote('Email updated!', 'success');
+                showToast('Email changed to ' + newEmail, 'success');
+              })
+              .catch(function (err) {
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                  setEmailNote('Incorrect password.', 'error');
+                } else if (err.code === 'auth/email-already-in-use') {
+                  setEmailNote('That email is already in use.', 'error');
+                } else if (err.code === 'auth/invalid-email') {
+                  setEmailNote('Invalid email format.', 'error');
+                } else if (err.code === 'auth/requires-recent-login') {
+                  setEmailNote('Please log out and log back in, then try again.', 'error');
+                } else {
+                  console.error('Email change error:', err);
+                  setEmailNote('Could not update email. Try again.', 'error');
+                }
+              });
+          }
+        });
+      });
+    }
+
+    function setEmailNote(msg, type) {
+      if (!emailNote) return;
+      emailNote.textContent = msg;
+      emailNote.className = 'setting-row__note';
+      if (type === 'success') emailNote.classList.add('setting-row__note--success');
+      if (type === 'error') emailNote.classList.add('setting-row__note--error');
+    }
+
     if (resetPwBtn) {
       resetPwBtn.addEventListener('click', function () {
         if (!currentUser || !currentUser.email) {
@@ -2459,6 +2544,7 @@
     }
     if (input) {
       input.style.display = opts.inputMode ? '' : 'none';
+      input.type = opts.inputType || 'text';
       input.placeholder = opts.placeholder || '';
       input.value = '';
     }

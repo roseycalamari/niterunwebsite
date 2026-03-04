@@ -209,6 +209,12 @@
       return;
     }
 
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      return;
+    }
+
     submitBtn.disabled = true;
 
     if (mode === 'login') {

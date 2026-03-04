@@ -2015,6 +2015,26 @@ h1, h2, h3, h4 {
   box-shadow: 3px 3px 0 var(--black);
 }
 
+.setting-row__note {
+  font-family: var(--ff-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  min-height: 0;
+}
+
+.setting-row__note:empty {
+  display: none;
+}
+
+.setting-row__note--success {
+  color: #15803d;
+}
+
+.setting-row__note--error {
+  color: var(--red);
+}
+
 .setting-row__label {
   display: block;
   font-size: 0.88rem;
