@@ -25,6 +25,7 @@
   var brandSub = document.getElementById('brandSub');
 
   var forgotBtn = document.getElementById('forgotPassword');
+  var pwToggle = document.getElementById('pwToggle');
   var pwReqs = document.getElementById('pwReqs');
   var pwReqLength = document.getElementById('pwReqLength');
   var pwReqUpper = document.getElementById('pwReqUpper');
@@ -35,6 +36,17 @@
   var usernameAvailable = false;
   var usernameCheckTimer = null;
   var passwordValid = false;
+
+  /* ---------- PASSWORD VISIBILITY TOGGLE ---------- */
+  if (pwToggle && passwordInput) {
+    pwToggle.addEventListener('click', function () {
+      var wrap = passwordInput.closest('.auth-pw-wrap');
+      var isVisible = passwordInput.type === 'text';
+      passwordInput.type = isVisible ? 'password' : 'text';
+      if (wrap) wrap.classList.toggle('auth-pw-wrap--visible', !isVisible);
+      passwordInput.focus();
+    });
+  }
 
   /* ---------- DARK MODE (respect saved preference) ---------- */
   try {

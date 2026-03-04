@@ -2382,6 +2382,12 @@ h1, h2, h3, h4 {
     display: block;
   }
 
+  /* Prevent iOS auto-zoom on input focus (requires >= 16px) */
+  .wiz-form__input,
+  .add-form__input {
+    font-size: 16px;
+  }
+
   .topbar__title {
     display: none;
   }
