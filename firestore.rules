@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: any authenticated user can read (search/profiles).
+    // Owner can create/update own doc. Other authenticated users can update
+    // limited fields (friends, friendCount, sessionsPlayed) for social features.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null
+                    && (request.auth.uid == userId
+                        || request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['friends', 'friendCount', 'sessionsPlayed', 'mvpCount']));
+      allow delete: if false;
+
+      // Notifications: owner full access; any authenticated user can create (to send notifs)
+      match /notifications/{notifId} {
+        allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null;
+      }
+    }
+
+    // Sessions: any authenticated user can read (needed for live session queries);
+    // only the creator can create/update; no deletes
+    match /sessions/{sessionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid;
+      allow update: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

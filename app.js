@@ -329,6 +329,14 @@
     });
   }
 
+  function handleHashNavigation() {
+    var hash = window.location.hash.replace('#', '');
+    if (hash && viewTitles[hash]) {
+      switchView(hash);
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
   if (typeof auth !== 'undefined' && auth && auth.onAuthStateChanged) {
     auth.onAuthStateChanged(function (user) {
       if (!user) {
@@ -336,10 +344,12 @@
         return;
       }
       bootApp(user);
+      handleHashNavigation();
     });
   } else {
     document.addEventListener('DOMContentLoaded', function () {
       bootApp(null);
+      handleHashNavigation();
     });
   }
 
@@ -1258,12 +1268,34 @@
     var saveBtn = document.getElementById('saveDisplayName');
     var resetPwBtn = document.getElementById('resetPasswordBtn');
     var emailNotifsToggle = document.getElementById('toggleEmailNotifs');
+    var notifsToggle = document.getElementById('toggleNotifs');
+    var autosaveToggle = document.getElementById('toggleAutosave');
 
     if (nameInput && currentUser) {
       nameInput.value = currentUser.displayName || '';
     }
 
-    if (emailNotifsToggle && currentUser && db) {
+    /* In-app notifications toggle */
+    if (notifsToggle && currentUser && typeof db !== 'undefined' && db) {
+      db.collection('users').doc(currentUser.uid).get().then(function (doc) {
+        if (doc.exists) {
+          notifsToggle.checked = doc.data().inAppNotifications !== false;
+        }
+      }).catch(function () {});
+      notifsToggle.addEventListener('change', function () {
+        if (!currentUser || typeof db === 'undefined' || !db) return;
+        var on = notifsToggle.checked;
+        db.collection('users').doc(currentUser.uid).update({ inAppNotifications: on }).then(function () {
+          showToast(on ? 'Notifications on' : 'Notifications off', 'success');
+        }).catch(function (err) {
+          console.error('Failed to update notification preference:', err);
+          notifsToggle.checked = !on;
+        });
+      });
+    }
+
+    /* Email notifications toggle */
+    if (emailNotifsToggle && currentUser && typeof db !== 'undefined' && db) {
       db.collection('users').doc(currentUser.uid).get().then(function (doc) {
         if (doc.exists) {
           var data = doc.data();
@@ -1271,7 +1303,7 @@
         }
       }).catch(function () {});
       emailNotifsToggle.addEventListener('change', function () {
-        if (!currentUser || !db) return;
+        if (!currentUser || typeof db === 'undefined' || !db) return;
         var on = emailNotifsToggle.checked;
         db.collection('users').doc(currentUser.uid).update({ emailNotifications: on }).then(function () {
           showToast(on ? 'Email notifications on' : 'Email notifications off', 'success');
@@ -1279,6 +1311,18 @@
           console.error('Failed to update email preference:', err);
           emailNotifsToggle.checked = !on;
         });
+      });
+    }
+
+    /* Auto-save roster toggle */
+    if (autosaveToggle) {
+      var autosaveOn = true;
+      try { autosaveOn = localStorage.getItem('niterun_autosave') !== '0'; } catch (e) {}
+      autosaveToggle.checked = autosaveOn;
+      autosaveToggle.addEventListener('change', function () {
+        var on = autosaveToggle.checked;
+        try { localStorage.setItem('niterun_autosave', on ? '1' : '0'); } catch (e) {}
+        showToast(on ? 'Auto-save on' : 'Auto-save off — roster cleared on new session', 'success');
       });
     }
 

@@ -7,18 +7,28 @@
 const APP_URL = "https://niterun.app";
 const PREFERENCES_URL = APP_URL + "/app.html#settings";
 
+function esc(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getSubject(type, data) {
   switch (type) {
     case "session_invite":
-      return "You've been added to a session" + (data.venue ? " at " + data.venue : "");
+      return "You've been added to a session" + (data.venue ? " at " + esc(data.venue) : "");
     case "mvp_award":
       return "You were voted MVP!";
     case "session_closed":
-      return "Session ended" + (data.venue ? " at " + data.venue : "");
+      return "Session ended" + (data.venue ? " at " + esc(data.venue) : "");
     case "friend_request":
-      return (data.fromName || "Someone") + " wants to be your friend";
+      return esc(data.fromName || "Someone") + " wants to be your friend";
     case "friend_accepted":
-      return (data.fromName || "Someone") + " accepted your friend request";
+      return esc(data.fromName || "Someone") + " accepted your friend request";
     case "welcome":
       return "Welcome to NiteRun";
     default:
@@ -38,9 +48,9 @@ const GREY  = "#6b6b6b";
 function avatarBlock(data, size) {
   const s = size || 56;
   const fromName = data.fromName || "";
-  const initial = fromName ? fromName.charAt(0).toUpperCase() : "?";
-  if (data.fromPhoto) {
-    return `<img src="${data.fromPhoto}" alt="" width="${s}" height="${s}" style="width:${s}px;height:${s}px;object-fit:cover;display:block;border:2px solid ${BLACK};" />`;
+  const initial = fromName ? esc(fromName.charAt(0).toUpperCase()) : "?";
+  if (data.fromPhoto && /^https:\/\//.test(data.fromPhoto)) {
+    return `<img src="${esc(data.fromPhoto)}" alt="" width="${s}" height="${s}" style="width:${s}px;height:${s}px;object-fit:cover;display:block;border:2px solid ${BLACK};" />`;
   }
   return `<div style="width:${s}px;height:${s}px;background:${BLACK};color:${CREAM};font-family:${FONT};font-size:${Math.round(s * 0.4)}px;font-weight:700;line-height:${s}px;text-align:center;border:2px solid ${BLACK};">${initial}</div>`;
 }
@@ -109,7 +119,7 @@ function ctaButtonSecondary(label) {
 
 /* ---- Welcome (new account) ---- */
 function buildWelcomeEmail(data) {
-  const name = data.displayName || "";
+  const name = esc(data.displayName || "");
   const inner = `
   <tr>
     <td style="padding:36px 32px 0;text-align:center;">
@@ -153,7 +163,7 @@ function buildWelcomeEmail(data) {
 
 /* ---- Friend Request ---- */
 function buildFriendRequestEmail(data) {
-  const fromName = data.fromName || "Someone";
+  const fromName = esc(data.fromName || "Someone");
   const avatar = avatarBlock(data, 64);
   const inner = `
   <tr>
@@ -164,7 +174,7 @@ function buildFriendRequestEmail(data) {
   <tr>
     <td style="padding:16px 32px 0;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${fromName}</p>
-      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${data.fromUsername}</p>` : ""}
+      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${esc(data.fromUsername)}</p>` : ""}
     </td>
   </tr>
   <tr>
@@ -182,7 +192,7 @@ function buildFriendRequestEmail(data) {
 
 /* ---- Friend Accepted ---- */
 function buildFriendAcceptedEmail(data) {
-  const fromName = data.fromName || "Someone";
+  const fromName = esc(data.fromName || "Someone");
   const avatar = avatarBlock(data, 64);
   const inner = `
   <tr>
@@ -193,7 +203,7 @@ function buildFriendAcceptedEmail(data) {
   <tr>
     <td style="padding:16px 32px 0;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${fromName}</p>
-      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${data.fromUsername}</p>` : ""}
+      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${esc(data.fromUsername)}</p>` : ""}
     </td>
   </tr>
   <tr>
@@ -212,8 +222,8 @@ function buildFriendAcceptedEmail(data) {
 
 /* ---- Session Invite ---- */
 function buildSessionInviteEmail(data) {
-  const fromName = data.fromName || "A player";
-  const venue = data.venue || "a session";
+  const fromName = esc(data.fromName || "A player");
+  const venue = esc(data.venue || "a session");
   const inner = `
   <tr>
     <td style="padding:28px 32px 0;">
@@ -250,7 +260,7 @@ function buildSessionInviteEmail(data) {
 
 /* ---- MVP Award ---- */
 function buildMvpAwardEmail(data) {
-  const venue = data.venue || "";
+  const venue = esc(data.venue || "");
   const inner = `
   <tr>
     <td style="padding:28px 32px 0;text-align:center;">
@@ -289,8 +299,8 @@ function buildMvpAwardEmail(data) {
 
 /* ---- Session Closed ---- */
 function buildSessionClosedEmail(data) {
-  const venue = data.venue || "Session";
-  const mvpName = data.mvpName || "";
+  const venue = esc(data.venue || "Session");
+  const mvpName = esc(data.mvpName || "");
   const inner = `
   <tr>
     <td style="padding:28px 32px 0;text-align:center;">
@@ -327,7 +337,7 @@ function buildSessionClosedEmail(data) {
 
 /* ---- Generic ---- */
 function buildGenericEmail(data) {
-  const message = data.message || "You have a new notification.";
+  const message = esc(data.message || "You have a new notification.");
   const inner = `
   <tr>
     <td style="padding:32px 32px 0;text-align:center;">
