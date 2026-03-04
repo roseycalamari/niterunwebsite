@@ -1,9 +1,14 @@
 /**
- * NiteRun email templates — match app/website exactly.
- * Cream #fffcef, black #2f2f2f, 2px borders, 5px card shadow, 4px button shadow.
- * Poppins, uppercase headings, letter-spacing 0.06em–0.08em.
- * No Firebase dependencies.
+ * NiteRun email templates — pixel-matched to the website & app.
+ *
+ * Design DNA (from styles.css / app.css):
+ *   Cream #fffcef · Black #2f2f2f · Blue #006dff
+ *   Sharp corners (0 border-radius) · 2px solid borders
+ *   4px offset box-shadows on buttons · 5px on cards
+ *   Poppins 800 headings (uppercase, -0.02em) · 700 labels · 500 body
+ *   Section eyebrow: tiny uppercase, 0.2em spacing
  */
+
 const APP_URL = "https://niterun.app";
 const PREFERENCES_URL = APP_URL + "/app.html#settings";
 
@@ -36,27 +41,83 @@ function getSubject(type, data) {
   }
 }
 
-/* ---- Design tokens (match app.css) ---- */
-const FONT = "'Poppins','Helvetica Neue',Helvetica,Arial,sans-serif";
-const CREAM = "#fffcef";
-const BLACK = "#2f2f2f";
-const BLUE  = "#006dff";
-const GOLD  = "#f59e0b";
-const GREEN = "#22c55e";
-const GREY  = "#6b6b6b";
+/* ---- Exact tokens from :root in styles.css / app.css ---- */
+const F  = "'Poppins','Helvetica Neue',Helvetica,Arial,sans-serif";
+const CR = "#fffcef";
+const BK = "#2f2f2f";
+const BL = "#006dff";
+const GD = "#f59e0b";
+const GR = "#22c55e";
+const GY = "#6b6b6b";
 
-function avatarBlock(data, size) {
-  const s = size || 56;
-  const fromName = data.fromName || "";
-  const initial = fromName ? esc(fromName.charAt(0).toUpperCase()) : "?";
+/* ---- Avatar (matches .topbar__avatar / .profile__avatar) ---- */
+function avatar(data, s) {
+  s = s || 48;
+  const nm = data.fromName || "";
+  const ini = nm ? esc(nm.charAt(0).toUpperCase()) : "?";
   if (data.fromPhoto && /^https:\/\//.test(data.fromPhoto)) {
-    return `<img src="${esc(data.fromPhoto)}" alt="" width="${s}" height="${s}" style="width:${s}px;height:${s}px;object-fit:cover;display:block;border:2px solid ${BLACK};" />`;
+    return `<img src="${esc(data.fromPhoto)}" alt="" width="${s}" height="${s}" style="width:${s}px;height:${s}px;object-fit:cover;display:block;border:2px solid ${BK};" />`;
   }
-  return `<div style="width:${s}px;height:${s}px;background:${BLACK};color:${CREAM};font-family:${FONT};font-size:${Math.round(s * 0.4)}px;font-weight:700;line-height:${s}px;text-align:center;border:2px solid ${BLACK};">${initial}</div>`;
+  return `<div style="width:${s}px;height:${s}px;background:${BK};color:${CR};font-family:${F};font-size:${Math.round(s*0.42)}px;font-weight:800;line-height:${s}px;text-align:center;border:2px solid ${BK};">${ini}</div>`;
 }
 
-/* Card shell: 5px offset shadow (like .card), black header bar, 2px borders */
-function emailShell(title, accent, innerHtml, footerNote) {
+/* ---- Eyebrow (matches .section-eyebrow) ---- */
+function eyebrow(text, color) {
+  return `<p style="margin:0;font-family:${F};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:${color || BL};">${text}</p>`;
+}
+
+/* ---- Heading (matches h1–h4 in app.css: 800, uppercase, -0.02em, 1.1) ---- */
+function heading(text, size) {
+  return `<p style="margin:10px 0 0;font-family:${F};font-size:${size || 26}px;font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:${BK};text-transform:uppercase;">${text}</p>`;
+}
+
+/* ---- Body text (matches Poppins 500, 1.6 line-height) ---- */
+function body(text) {
+  return `<p style="margin:0;font-family:${F};font-size:15px;font-weight:500;line-height:1.6;color:${BK};">${text}</p>`;
+}
+
+/* ---- Primary CTA (matches .btn--primary: blue bg, cream text, 2px border, 4px offset shadow) ---- */
+function cta(label, color) {
+  const bg = color || BL;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+<tr><td style="padding:0 4px 4px 0;background-color:${BK};">
+<a href="${APP_URL}" target="_blank" style="display:inline-block;padding:14px 36px;background-color:${bg};color:${CR};font-family:${F};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BK};mso-padding-alt:0;">${label} &rarr;</a>
+</td></tr>
+</table>`;
+}
+
+/* ---- Secondary CTA (matches .btn--secondary: cream bg, black text) ---- */
+function ctaSec(label) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+<tr><td style="padding:0 4px 4px 0;background-color:${BK};">
+<a href="${APP_URL}" target="_blank" style="display:inline-block;padding:14px 36px;background-color:${CR};color:${BK};font-family:${F};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BK};">${label} &rarr;</a>
+</td></tr>
+</table>`;
+}
+
+/* ---- Info card row (matches .card with border + inner content) ---- */
+function infoCard(labelText, valueText, accent) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${BK};">
+<tr><td style="padding:16px 20px;">
+  ${eyebrow(labelText, accent || BL)}
+  <p style="margin:8px 0 0;font-family:${F};font-size:18px;font-weight:800;letter-spacing:-0.02em;color:${BK};text-transform:uppercase;line-height:1.1;">${valueText}</p>
+</td></tr>
+</table>`;
+}
+
+/* ---- Step row (matches .step pattern: number + text) ---- */
+function stepRow(num, text) {
+  return `<tr>
+<td style="padding:${num === "01" ? "0" : "12px 0 0"};font-family:${F};font-size:14px;font-weight:500;color:${BK};line-height:1.6;${num !== "01" ? `border-top:1px solid ${BK};padding-top:12px;` : ""}">
+  <span style="font-family:${F};font-size:12px;font-weight:800;color:${BL};letter-spacing:0.1em;margin-right:8px;">${num}</span>${text}
+</td></tr>`;
+}
+
+/* ============================================================
+   SHELL — mirrors the full page layout:
+   cream body → card with 5px offset shadow → black header bar → content → footer
+   ============================================================ */
+function shell(title, accent, inner, footerNote) {
   const note = footerNote != null ? footerNote : "You're receiving this because you have a NiteRun account.";
   return `<!DOCTYPE html>
 <html lang="en">
@@ -65,293 +126,334 @@ function emailShell(title, accent, innerHtml, footerNote) {
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${title} — NiteRun</title>
 </head>
-<body style="margin:0;padding:0;background-color:${CREAM};font-family:${FONT};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CREAM};">
-<tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BLACK};" align="center">
+<body style="margin:0;padding:0;background-color:${CR};font-family:${F};-webkit-text-size-adjust:100%;">
+
+<!-- Full-width cream wrapper -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};">
+<tr><td align="center" style="padding:40px 16px 32px;">
+
+<!-- Card shadow wrapper (5px offset like .card box-shadow) -->
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BK};" align="center">
 <tr><td style="padding:0 5px 5px 0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background-color:${CREAM};border:2px solid ${BLACK};">
+
+<!-- Main card: cream bg, 2px black border, max 520px -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;min-width:320px;background-color:${CR};border:2px solid ${BK};">
+
+  <!-- Header bar: black bg like .topnav / .sidebar -->
   <tr>
-    <td style="padding:20px 24px;background-color:${BLACK};">
+    <td style="padding:20px 28px;background-color:${BK};">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="font-family:${FONT};font-size:20px;font-weight:800;letter-spacing:0.06em;color:${CREAM};text-transform:uppercase;">NITE-RUN</td>
-          <td align="right" style="font-family:${FONT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${accent};">${title}</td>
+          <td style="font-family:${F};font-size:18px;font-weight:800;letter-spacing:0.06em;color:${CR};text-transform:uppercase;">NITE-RUN</td>
+          <td align="right" style="font-family:${F};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:${accent || BL};">${title}</td>
         </tr>
       </table>
     </td>
   </tr>
-  ${innerHtml}
+
+  <!-- Content -->
+  ${inner}
+
+  <!-- Footer divider (matches .footer__divider: 1px line) -->
+  <tr><td style="padding:0 28px;"><div style="height:1px;background-color:${BK};opacity:0.12;"></div></td></tr>
+
+  <!-- Footer (matches .footer__bottom) -->
   <tr>
-    <td style="padding:20px 24px;border-top:2px solid ${BLACK};">
-      <p style="margin:0;font-family:${FONT};font-size:11px;color:${GREY};line-height:1.6;text-align:center;">
+    <td style="padding:20px 28px;">
+      <p style="margin:0;font-family:${F};font-size:11px;color:${GY};line-height:1.7;text-align:center;">
         ${note}<br>
-        <a href="${APP_URL}" style="color:${BLACK};text-decoration:underline;">niterun.app</a>
-        &nbsp;·&nbsp;
-        <a href="${PREFERENCES_URL}" style="color:${BLACK};text-decoration:underline;">Manage notification preferences</a>
+        <a href="${APP_URL}" style="color:${BK};font-weight:600;text-decoration:underline;">niterun.app</a>
+        &nbsp;&middot;&nbsp;
+        <a href="${PREFERENCES_URL}" style="color:${BK};font-weight:600;text-decoration:underline;">Manage preferences</a>
       </p>
+      <p style="margin:12px 0 0;font-family:${F};font-size:10px;color:${GY};text-align:center;opacity:0.5;font-style:italic;">Draft Smarter. Play Harder.</p>
     </td>
   </tr>
+
 </table>
 </td></tr>
 </table>
+
 </td></tr>
 </table>
 </body>
 </html>`;
 }
 
-/* Primary CTA: blue (or color), cream text, 2px black border, 4px offset shadow (like .btn--primary) */
-function ctaButton(label, color) {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BLACK};">
-<tr><td style="padding:0 4px 4px 0;">
-<a href="${APP_URL}" target="_blank" style="display:inline-block;padding:14px 32px;background-color:${color};color:${CREAM};font-family:${FONT};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BLACK};">${label}</a>
-</td></tr>
-</table>`;
-}
-function ctaButtonSecondary(label) {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BLACK};">
-<tr><td style="padding:0 4px 4px 0;">
-<a href="${APP_URL}" target="_blank" style="display:inline-block;padding:14px 32px;background-color:${CREAM};color:${BLACK};font-family:${FONT};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BLACK};">${label}</a>
-</td></tr>
-</table>`;
-}
 
-/* ---- Welcome (new account) ---- */
+/* ============================================================
+   WELCOME
+   Mirrors: hero section eyebrow + title + feature list + CTA
+   ============================================================ */
 function buildWelcomeEmail(data) {
   const name = esc(data.displayName || "");
   const inner = `
   <tr>
-    <td style="padding:36px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:${BLUE};">You're in</p>
-      <p style="margin:12px 0 0;font-family:${FONT};font-size:28px;font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:${BLACK};text-transform:uppercase;">Welcome to NiteRun</p>
+    <td style="padding:36px 28px 0;text-align:center;">
+      ${eyebrow("YOU'RE IN", BL)}
+      ${heading("WELCOME TO<br>NITE-RUN", 28)}
     </td>
   </tr>
   <tr>
-    <td style="padding:24px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:16px;font-weight:500;line-height:1.5;color:${BLACK};">
-        ${name ? `Hi ${name},<br><br>` : ""}
-        Fair teams. Zero drama. Create sessions, add players, balance sides and pick MVPs — all in one place.
-      </p>
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body(name ? `Hey ${name}, welcome aboard.<br><br>Fair teams. Zero drama. Create sessions, add players, balance sides and pick MVPs — all in one place.` : "Fair teams. Zero drama. Create sessions, add players, balance sides and pick MVPs — all in one place.")}
     </td>
   </tr>
   <tr>
-    <td style="padding:8px 32px 0;text-align:center;">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${CREAM};border:2px solid ${BLACK};">
-        <tr>
-          <td style="padding:12px 20px;font-family:${FONT};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${GREY};">What you can do</td>
-        </tr>
+    <td style="padding:24px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${BK};">
+        ${stepRow("01", "Create sessions and add players by name or @username")}
+        ${stepRow("02", "Get balanced teams based on skill ratings")}
+        ${stepRow("03", "Award MVPs and track stats on your profile")}
       </table>
     </td>
   </tr>
   <tr>
-    <td style="padding:16px 32px 0;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CREAM};border:2px solid ${BLACK};">
-        <tr><td style="padding:14px 20px;font-family:${FONT};font-size:14px;font-weight:500;color:${BLACK};line-height:1.5;">Create sessions and add players by name or @username</td></tr>
-        <tr><td style="padding:0 20px 14px;border-top:1px solid ${BLACK};font-family:${FONT};font-size:14px;font-weight:500;color:${BLACK};line-height:1.5;">Get balanced teams and share live sessions with friends</td></tr>
-        <tr><td style="padding:0 20px 14px;border-top:1px solid ${BLACK};font-family:${FONT};font-size:14px;font-weight:500;color:${BLACK};line-height:1.5;">Award MVPs and track stats on your profile</td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:32px 32px 36px;text-align:center;">
-      ${ctaButton("Open NiteRun", BLUE)}
+    <td style="padding:32px 28px 36px;text-align:center;">
+      ${cta("LAUNCH APP", BL)}
     </td>
   </tr>`;
-  return emailShell("Welcome", BLUE, inner, "You're receiving this because you just signed up for NiteRun.");
+  return shell("Welcome", BL, inner, "You're receiving this because you just signed up for NiteRun.");
 }
 
-/* ---- Friend Request ---- */
+
+/* ============================================================
+   FRIEND REQUEST
+   Mirrors: user profile card with avatar + name + username
+   ============================================================ */
 function buildFriendRequestEmail(data) {
   const fromName = esc(data.fromName || "Someone");
-  const avatar = avatarBlock(data, 64);
+  const av = avatar(data, 56);
   const inner = `
   <tr>
-    <td style="padding:28px 32px 0;text-align:center;">
-      ${avatar.replace("display:block", "display:inline-block;margin:0 auto")}
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("FRIEND REQUEST", BL)}
+      ${heading("NEW REQUEST", 24)}
     </td>
   </tr>
   <tr>
-    <td style="padding:16px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${fromName}</p>
-      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${esc(data.fromUsername)}</p>` : ""}
+    <td style="padding:24px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${BK};">
+        <tr>
+          <td style="padding:20px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;padding-right:16px;">${av}</td>
+                <td style="vertical-align:middle;">
+                  <p style="margin:0;font-family:${F};font-size:16px;font-weight:800;letter-spacing:-0.02em;color:${BK};text-transform:uppercase;line-height:1.1;">${fromName}</p>
+                  ${data.fromUsername ? `<p style="margin:4px 0 0;font-family:${F};font-size:13px;font-weight:600;color:${BL};">@${esc(data.fromUsername)}</p>` : ""}
+                  <p style="margin:8px 0 0;font-family:${F};font-size:13px;font-weight:500;color:${GY};">wants to be your friend</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
   <tr>
-    <td style="padding:20px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:15px;font-weight:500;line-height:1.5;color:${BLACK};">wants to be your friend on NiteRun</p>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButton("View Request", BLUE)}
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${cta("VIEW REQUEST", BL)}
     </td>
   </tr>`;
-  return emailShell("Friend Request", BLUE, inner);
+  return shell("Friend Request", BL, inner);
 }
 
-/* ---- Friend Accepted ---- */
+
+/* ============================================================
+   FRIEND ACCEPTED
+   ============================================================ */
 function buildFriendAcceptedEmail(data) {
   const fromName = esc(data.fromName || "Someone");
-  const avatar = avatarBlock(data, 64);
+  const av = avatar(data, 56);
   const inner = `
   <tr>
-    <td style="padding:28px 32px 0;text-align:center;">
-      <div style="display:inline-block;border:3px solid ${GREEN};">${avatar}</div>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("REQUEST ACCEPTED", GR)}
+      ${heading("YOU'RE NOW FRIENDS", 24)}
     </td>
   </tr>
   <tr>
-    <td style="padding:16px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${fromName}</p>
-      ${data.fromUsername ? `<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;font-weight:500;color:${BLUE};">@${esc(data.fromUsername)}</p>` : ""}
+    <td style="padding:24px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${BK};">
+        <tr>
+          <td style="padding:20px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;padding-right:16px;">
+                  <div style="display:inline-block;border:3px solid ${GR};">${av}</div>
+                </td>
+                <td style="vertical-align:middle;">
+                  <p style="margin:0;font-family:${F};font-size:16px;font-weight:800;letter-spacing:-0.02em;color:${BK};text-transform:uppercase;line-height:1.1;">${fromName}</p>
+                  ${data.fromUsername ? `<p style="margin:4px 0 0;font-family:${F};font-size:13px;font-weight:600;color:${BL};">@${esc(data.fromUsername)}</p>` : ""}
+                  <p style="margin:8px 0 0;font-family:${F};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${GR};">Friends &#10003;</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
   <tr>
-    <td style="padding:20px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:15px;font-weight:500;line-height:1.5;color:${BLACK};">accepted your friend request</p>
-      <p style="margin:10px 0 0;font-family:${FONT};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${GREEN};">You're now friends!</p>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButton("View Profile", GREEN)}
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${cta("VIEW PROFILE", GR)}
     </td>
   </tr>`;
-  return emailShell("Request Accepted", GREEN, inner);
+  return shell("Request Accepted", GR, inner);
 }
 
-/* ---- Session Invite ---- */
+
+/* ============================================================
+   SESSION INVITE
+   Mirrors: live session card with venue + meta + creator
+   ============================================================ */
 function buildSessionInviteEmail(data) {
   const fromName = esc(data.fromName || "A player");
-  const venue = esc(data.venue || "a session");
+  const venue = esc(data.venue || "A session");
   const inner = `
   <tr>
-    <td style="padding:28px 32px 0;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CREAM};border:2px solid ${BLACK};">
-        <tr>
-          <td style="padding:16px 20px;">
-            <p style="margin:0 0 6px;font-family:${FONT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${BLUE};">Venue</p>
-            <p style="margin:0;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${venue}</p>
-          </td>
-        </tr>
-      </table>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("SESSION INVITE", BL)}
+      ${heading("YOU'VE BEEN ADDED", 24)}
     </td>
   </tr>
   <tr>
-    <td style="padding:20px 32px 0;">
+    <td style="padding:24px 28px 0;">
+      ${infoCard("VENUE", venue, BL)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:16px 28px 0;">
       <table role="presentation" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="vertical-align:middle;padding-right:12px;">${avatarBlock(data, 40)}</td>
+          <td style="vertical-align:middle;padding-right:14px;">${avatar(data, 40)}</td>
           <td style="vertical-align:middle;">
-            <p style="margin:0;font-family:${FONT};font-size:14px;font-weight:700;color:${BLACK};">${fromName}</p>
-            <p style="margin:2px 0 0;font-family:${FONT};font-size:12px;font-weight:500;color:${GREY};">added you to this session</p>
+            <p style="margin:0;font-family:${F};font-size:14px;font-weight:700;color:${BK};">${fromName}</p>
+            <p style="margin:2px 0 0;font-family:${F};font-size:12px;font-weight:500;color:${GY};">added you to this session</p>
           </td>
         </tr>
       </table>
     </td>
   </tr>
   <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButton("View Session", BLUE)}
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${cta("VIEW SESSION", BL)}
     </td>
   </tr>`;
-  return emailShell("Session Invite", BLUE, inner);
+  return shell("Session Invite", BL, inner);
 }
 
-/* ---- MVP Award ---- */
+
+/* ============================================================
+   MVP AWARD
+   Mirrors: stat card with big number + gold accent
+   ============================================================ */
 function buildMvpAwardEmail(data) {
   const venue = esc(data.venue || "");
   const inner = `
   <tr>
-    <td style="padding:28px 32px 0;text-align:center;">
-      <span style="font-size:48px;line-height:1;">&#127942;</span>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("MVP AWARD", GD)}
+      ${heading("YOU'RE THE MVP", 28)}
     </td>
   </tr>
   <tr>
-    <td style="padding:12px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:22px;font-weight:800;letter-spacing:0.02em;color:${GOLD};text-transform:uppercase;">You're the MVP!</p>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:16px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:15px;font-weight:500;line-height:1.5;color:${BLACK};">
-        ${venue ? `Your performance at <strong style="font-weight:800;">${venue}</strong> earned you the MVP award.` : "You've been selected as the Most Valuable Player."}
-        <br>This badge is now on your profile.
-      </p>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:12px 32px 0;text-align:center;">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${GOLD};border:2px solid ${BLACK};">
-        <tr>
-          <td style="padding:10px 24px;font-family:${FONT};font-size:18px;font-weight:800;letter-spacing:0.04em;color:${BLACK};">MVP +1</td>
-        </tr>
+    <td style="padding:24px 28px 0;text-align:center;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BK};">
+        <tr><td style="padding:0 4px 4px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:${GD};border:2px solid ${BK};">
+            <tr><td style="padding:16px 32px;text-align:center;">
+              <span style="font-size:28px;line-height:1;">&#127942;</span>
+              <p style="margin:6px 0 0;font-family:${F};font-size:22px;font-weight:800;letter-spacing:0.04em;color:${BK};">MVP +1</p>
+            </td></tr>
+          </table>
+        </td></tr>
       </table>
     </td>
   </tr>
   <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButton("View Profile", GOLD)}
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body(venue ? `Your performance at <strong style="font-weight:800;text-transform:uppercase;">${venue}</strong> earned you the MVP award. This badge is now on your profile.` : "You've been selected as the Most Valuable Player. This badge is now on your profile.")}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${cta("VIEW PROFILE", GD)}
     </td>
   </tr>`;
-  return emailShell("MVP Award", GOLD, inner);
+  return shell("MVP Award", GD, inner);
 }
 
-/* ---- Session Closed ---- */
+
+/* ============================================================
+   SESSION CLOSED
+   Mirrors: session detail card with venue + MVP badge + meta
+   ============================================================ */
 function buildSessionClosedEmail(data) {
   const venue = esc(data.venue || "Session");
   const mvpName = esc(data.mvpName || "");
   const inner = `
   <tr>
-    <td style="padding:28px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${GREY};">Final Whistle</p>
-      <p style="margin:8px 0 0;font-family:${FONT};font-size:20px;font-weight:800;letter-spacing:0.02em;color:${BLACK};text-transform:uppercase;">${venue}</p>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("FINAL WHISTLE", GY)}
+      ${heading(venue, 24)}
     </td>
   </tr>
   ${mvpName ? `
   <tr>
-    <td style="padding:20px 32px 0;text-align:center;">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${CREAM};border:2px solid ${BLACK};">
-        <tr>
-          <td style="padding:12px 20px;text-align:center;">
-            <p style="margin:0 0 4px;font-family:${FONT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${GOLD};">&#127942; MVP</p>
-            <p style="margin:0;font-family:${FONT};font-size:16px;font-weight:700;color:${BLACK};">${mvpName}</p>
-          </td>
-        </tr>
+    <td style="padding:20px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${BK};">
+        <tr><td style="padding:16px 20px;text-align:center;">
+          ${eyebrow("&#127942; MVP", GD)}
+          <p style="margin:6px 0 0;font-family:${F};font-size:18px;font-weight:800;letter-spacing:-0.02em;color:${BK};text-transform:uppercase;">${mvpName}</p>
+        </td></tr>
       </table>
     </td>
-  </tr>
-  ` : ""}
+  </tr>` : ""}
   <tr>
-    <td style="padding:20px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:15px;font-weight:500;line-height:1.5;color:${BLACK};">This session has been closed by the host. Check your stats on your profile.</p>
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body("This session has been closed by the host. Check your stats on your profile.")}
     </td>
   </tr>
   <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButtonSecondary("View History")}
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${ctaSec("VIEW HISTORY")}
     </td>
   </tr>`;
-  return emailShell("Session Ended", GREY, inner);
+  return shell("Session Ended", GY, inner);
 }
 
-/* ---- Generic ---- */
+
+/* ============================================================
+   GENERIC
+   ============================================================ */
 function buildGenericEmail(data) {
   const message = esc(data.message || "You have a new notification.");
   const inner = `
   <tr>
-    <td style="padding:32px 32px 0;text-align:center;">
-      <p style="margin:0;font-family:${FONT};font-size:16px;font-weight:500;line-height:1.5;color:${BLACK};">${message}</p>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("NOTIFICATION", BL)}
+      ${heading("NEW UPDATE", 24)}
     </td>
   </tr>
   <tr>
-    <td style="padding:28px 32px 32px;text-align:center;">
-      ${ctaButton("Open NiteRun", BLUE)}
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body(message)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 28px 36px;text-align:center;">
+      ${cta("OPEN NITERUN", BL)}
     </td>
   </tr>`;
-  return emailShell("Notification", BLUE, inner);
+  return shell("Notification", BL, inner);
 }
 
+
+/* ============================================================
+   EXPORTS
+   ============================================================ */
 function buildEmail(type, data) {
   switch (type) {
     case "friend_request":   return buildFriendRequestEmail(data);
