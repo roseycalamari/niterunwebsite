@@ -5,11 +5,15 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { buildEmail } = require("./email-templates");
+const { buildEmail, buildWelcomeEmail } = require("./email-templates");
 
 const PREVIEW_DIR = path.join(__dirname, "preview");
 
 const samples = {
+  welcome: {
+    displayName: "Alex",
+    email: "alex@example.com",
+  },
   friend_request: {
     fromName: "Alex Silva",
     fromUsername: "alexsilva",
@@ -36,6 +40,7 @@ const samples = {
 };
 
 const labels = {
+  welcome: "Welcome (new account)",
   friend_request: "Friend Request",
   friend_accepted: "Friend Accepted",
   session_invite: "Session Invite",
@@ -50,7 +55,7 @@ if (!fs.existsSync(PREVIEW_DIR)) {
 
 const types = Object.keys(samples);
 types.forEach((type) => {
-  const html = buildEmail(type, samples[type]);
+  const html = type === "welcome" ? buildWelcomeEmail(samples[type]) : buildEmail(type, samples[type]);
   const filename = type === "general" ? "generic.html" : type + ".html";
   fs.writeFileSync(path.join(PREVIEW_DIR, filename), html, "utf8");
   console.log("Wrote " + filename);
