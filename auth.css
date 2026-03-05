@@ -490,6 +490,75 @@ body.dark .auth-pw-req--pass {
   opacity: 1;
 }
 
+/* ---- Email verification screen ---- */
+.auth-verify {
+  display: none;
+  justify-content: center;
+}
+
+.auth-verify__content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.auth-verify__icon {
+  color: var(--blue);
+  margin-bottom: 0.5rem;
+}
+
+.auth-verify__title {
+  font-family: var(--ff-body);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--black);
+}
+
+.auth-verify__text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--black);
+  opacity: 0.65;
+  line-height: 1.5;
+}
+
+.auth-verify__email {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--blue);
+  word-break: break-all;
+}
+
+.auth-verify__status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 1.2em;
+}
+
+.auth-verify__status--success {
+  color: #15803d;
+}
+
+.auth-verify__status--error {
+  color: var(--red);
+}
+
+body.dark .auth-verify__title {
+  color: #e2dfd6;
+}
+
+body.dark .auth-verify__text {
+  color: #e2dfd6;
+}
+
+body.dark .auth-verify__icon {
+  color: #60a5fa;
+}
+
 /* ---- REDUCED MOTION ---- */
 @media (prefers-reduced-motion: reduce) {
   .auth-field--name,

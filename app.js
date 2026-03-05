@@ -344,6 +344,10 @@
         window.location.replace('auth.html');
         return;
       }
+      if (!user.emailVerified) {
+        window.location.replace('auth.html');
+        return;
+      }
       bootApp(user);
       handleHashNavigation();
     });

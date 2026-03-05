@@ -60,7 +60,7 @@
      the Firestore user-doc write has time to complete. */
   if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
     auth.onAuthStateChanged(function (user) {
-      if (user && !isRegistering) {
+      if (user && !isRegistering && user.emailVerified) {
         window.location.replace('app.html');
       }
     });
@@ -250,7 +250,12 @@
   /* ---------- LOGIN ---------- */
   function handleLogin(email, password) {
     auth.signInWithEmailAndPassword(email, password)
-      .then(function () {
+      .then(function (cred) {
+        if (!cred.user.emailVerified) {
+          showVerifyScreen(email);
+          submitBtn.disabled = false;
+          return;
+        }
         window.location.href = 'app.html';
       })
       .catch(function (err) {
@@ -280,8 +285,11 @@
         });
       })
       .then(function () {
+        return newUser.sendEmailVerification();
+      })
+      .then(function () {
         isRegistering = false;
-        window.location.href = 'app.html';
+        showVerifyScreen(email);
       })
       .catch(function (err) {
         isRegistering = false;
@@ -343,6 +351,71 @@
         }
       });
     });
+  }
+
+  /* ---------- EMAIL VERIFICATION SCREEN ---------- */
+  var verifyPanel = document.getElementById('verifyPanel');
+  var verifyEmailEl = document.getElementById('verifyEmail');
+  var verifyResendBtn = document.getElementById('verifyResend');
+  var verifyBackBtn = document.getElementById('verifyBack');
+  var verifyStatus = document.getElementById('verifyStatus');
+
+  function showVerifyScreen(email) {
+    var card = document.querySelector('.auth-card');
+    var formPanel = document.querySelector('.auth-form-panel:not(.auth-verify)');
+    if (formPanel) formPanel.style.display = 'none';
+    if (verifyPanel) verifyPanel.style.display = 'flex';
+    if (verifyEmailEl) verifyEmailEl.textContent = email;
+    if (brandTitle) brandTitle.textContent = 'Almost There';
+    if (brandSub) brandSub.textContent = 'Verify your email to continue.';
+  }
+
+  function hideVerifyScreen() {
+    var formPanel = document.querySelector('.auth-form-panel:not(.auth-verify)');
+    if (formPanel) formPanel.style.display = '';
+    if (verifyPanel) verifyPanel.style.display = 'none';
+    if (verifyStatus) { verifyStatus.textContent = ''; verifyStatus.className = 'auth-verify__status'; }
+    setMode('login');
+  }
+
+  if (verifyResendBtn) {
+    verifyResendBtn.addEventListener('click', function () {
+      var user = auth.currentUser;
+      if (!user) {
+        setVerifyStatus('Please log in first, then we can resend.', 'error');
+        return;
+      }
+      verifyResendBtn.disabled = true;
+      user.sendEmailVerification().then(function () {
+        setVerifyStatus('Verification email sent!', 'success');
+        setTimeout(function () { verifyResendBtn.disabled = false; }, 10000);
+      }).catch(function (err) {
+        if (err.code === 'auth/too-many-requests') {
+          setVerifyStatus('Too many requests. Please wait a minute.', 'error');
+        } else {
+          setVerifyStatus('Could not resend. Try again shortly.', 'error');
+        }
+        verifyResendBtn.disabled = false;
+      });
+    });
+  }
+
+  if (verifyBackBtn) {
+    verifyBackBtn.addEventListener('click', function () {
+      if (auth.currentUser) {
+        auth.signOut().then(function () { hideVerifyScreen(); });
+      } else {
+        hideVerifyScreen();
+      }
+    });
+  }
+
+  function setVerifyStatus(msg, type) {
+    if (!verifyStatus) return;
+    verifyStatus.textContent = msg;
+    verifyStatus.className = 'auth-verify__status';
+    if (type === 'success') verifyStatus.classList.add('auth-verify__status--success');
+    if (type === 'error') verifyStatus.classList.add('auth-verify__status--error');
   }
 
 })();

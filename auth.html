@@ -84,6 +84,24 @@
 
       </div>
 
+      <!-- VERIFY EMAIL SCREEN (hidden by default) -->
+      <div class="auth-form-panel auth-verify" id="verifyPanel" style="display:none;">
+        <div class="auth-verify__content">
+          <div class="auth-verify__icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          </div>
+          <h2 class="auth-verify__title">CHECK YOUR INBOX</h2>
+          <p class="auth-verify__text">We sent a verification link to:</p>
+          <p class="auth-verify__email" id="verifyEmail">your@email.com</p>
+          <p class="auth-verify__text">Click the link in the email to verify your account, then come back and log in.</p>
+          <button class="btn btn--primary btn--large auth-submit" id="verifyResend" style="width:100%;justify-content:center;">
+            Resend Email <span class="btn__arrow">→</span>
+          </button>
+          <p class="auth-verify__status" id="verifyStatus"></p>
+          <button type="button" class="auth-forgot" id="verifyBack">← Back to login</button>
+        </div>
+      </div>
+
     </div>
   </main>
 
