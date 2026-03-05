@@ -17,3 +17,4 @@ firebase.initializeApp(firebaseConfig);
 var auth = firebase.auth();
 var db = firebase.firestore();
 var storage = typeof firebase.storage === 'function' ? firebase.storage() : null;
+var functions = typeof firebase.functions === 'function' ? firebase.functions() : null;

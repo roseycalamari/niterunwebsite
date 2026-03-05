@@ -285,7 +285,8 @@
         });
       })
       .then(function () {
-        return newUser.sendEmailVerification();
+        var sendVerification = functions.httpsCallable('sendVerification');
+        return sendVerification();
       })
       .then(function () {
         isRegistering = false;
@@ -386,15 +387,16 @@
         return;
       }
       verifyResendBtn.disabled = true;
-      user.sendEmailVerification().then(function () {
-        setVerifyStatus('Verification email sent!', 'success');
-        setTimeout(function () { verifyResendBtn.disabled = false; }, 10000);
-      }).catch(function (err) {
-        if (err.code === 'auth/too-many-requests') {
-          setVerifyStatus('Too many requests. Please wait a minute.', 'error');
+      var sendVerification = functions.httpsCallable('sendVerification');
+      sendVerification().then(function (result) {
+        if (result.data && result.data.already) {
+          setVerifyStatus('Your email is already verified! Go ahead and log in.', 'success');
         } else {
-          setVerifyStatus('Could not resend. Try again shortly.', 'error');
+          setVerifyStatus('Verification email sent!', 'success');
         }
+        setTimeout(function () { verifyResendBtn.disabled = false; }, 10000);
+      }).catch(function () {
+        setVerifyStatus('Could not resend. Try again shortly.', 'error');
         verifyResendBtn.disabled = false;
       });
     });

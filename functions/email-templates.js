@@ -426,6 +426,48 @@ function buildSessionClosedEmail(data) {
 
 
 /* ============================================================
+   EMAIL VERIFICATION
+   Mirrors: welcome layout with shield icon + verification CTA
+   ============================================================ */
+function buildVerifyEmailTemplate(data) {
+  const name = esc(data.displayName || "");
+  const link = data.verifyLink || APP_URL;
+  const inner = `
+  <tr>
+    <td style="padding:36px 28px 0;text-align:center;">
+      ${eyebrow("VERIFY YOUR EMAIL", BL)}
+      ${heading("ONE LAST STEP", 28)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body(name ? `Hey ${name}, tap the button below to verify your email and unlock your NiteRun account.` : "Tap the button below to verify your email and unlock your NiteRun account.")}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 28px 0;text-align:center;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;background-color:${BK};">
+        <tr><td style="padding:0 4px 4px 0;">
+          <a href="${link}" target="_blank" style="display:inline-block;padding:14px 36px;background-color:${BL};color:${CR};font-family:${F};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BK};mso-padding-alt:0;">VERIFY EMAIL &rarr;</a>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:20px 28px 0;text-align:center;">
+      <p style="margin:0;font-family:${F};font-size:12px;font-weight:500;color:${GY};line-height:1.6;">This link expires in 24 hours. If you didn't create a NiteRun account, ignore this email.</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:16px 28px 36px;text-align:center;">
+      <p style="margin:0;font-family:${F};font-size:11px;font-weight:500;color:${GY};line-height:1.6;word-break:break-all;">Or copy this link: <a href="${link}" style="color:${BL};font-weight:600;text-decoration:underline;">${link}</a></p>
+    </td>
+  </tr>`;
+  return shell("Verify Email", BL, inner, "You're receiving this because someone signed up for NiteRun with this email.");
+}
+
+
+/* ============================================================
    GENERIC
    ============================================================ */
 function buildGenericEmail(data) {
@@ -466,4 +508,4 @@ function buildEmail(type, data) {
   }
 }
 
-module.exports = { buildEmail, getSubject, buildWelcomeEmail, PREFERENCES_URL };
+module.exports = { buildEmail, getSubject, buildWelcomeEmail, buildVerifyEmailTemplate, PREFERENCES_URL };
