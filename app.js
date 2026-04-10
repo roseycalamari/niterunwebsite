@@ -7,6 +7,13 @@
 (function () {
   'use strict';
 
+  function t(key, vars) {
+    try {
+      if (window.NiteRunI18n && typeof window.NiteRunI18n.t === 'function') return window.NiteRunI18n.t(key, vars);
+    } catch (e) {}
+    return key;
+  }
+
   /* ---------- STATE ---------- */
   var players = [];
   var groups = [];
@@ -27,6 +34,100 @@
 
   /* ---------- CURRENT USER ---------- */
   var currentUser = null;
+
+  /* ---------- OFFICIAL GROUPS (Firestore) ---------- */
+  var officialGroups = []; // { id, name, joinCode, isVerified, memberCount, verifiedMemberCount, myRole }
+  var selectedGroupId = '';
+  var selectedGroup = null;
+  var groupMemberMentionCache = {}; // groupId -> { ts, list }
+  var forceQuickFlow = false;
+
+  function isQuickSessionMode() {
+    if (forceQuickFlow) return true;
+    var sm = document.getElementById('sessionMode');
+    if (!sm) return true;
+    return sm.value !== 'official';
+  }
+
+  /* Milestones: one visible next step per track; next tier appears after you complete the current one */
+  var milestoneStatsCache = { sessions: 0, mvps: 0 };
+  var SESSION_MILESTONES = [10, 50, 125, 275, 500];
+  var MVP_MILESTONES = [10, 100, 300, 750];
+  var MILESTONE_TOTAL_COUNT = SESSION_MILESTONES.length + MVP_MILESTONES.length;
+
+  function countMilestonesCompleted(cur, targets) {
+    var n = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (cur >= targets[i]) n++;
+    }
+    return n;
+  }
+
+  function nextMilestoneTarget(cur, targets) {
+    for (var i = 0; i < targets.length; i++) {
+      if (cur < targets[i]) return targets[i];
+    }
+    return null;
+  }
+
+  function milestoneRowHtml(stat, target, cur) {
+    var done = cur >= target;
+    var pct = target > 0 ? Math.min(100, Math.round((cur / target) * 100)) : 0;
+    var title = t('app.milestone.tpl.' + stat, { target: target });
+    var nums = t('app.milestone.progress', { current: cur, target: target });
+    var html = '<div class="milestone-row' + (done ? ' milestone-row--done' : '') + '">';
+    html += '<div class="milestone-row__head">';
+    html += '<span class="milestone-row__title">' + escapeHtml(title) + '</span>';
+    if (done) html += '<span class="milestone-row__check" aria-hidden="true">✓</span>';
+    html += '</div>';
+    html += '<div class="milestone-row__track"><div class="milestone-row__fill" style="width:' + pct + '%"></div></div>';
+    html += '<div class="milestone-row__meta">' + escapeHtml(nums);
+    if (done) html += ' · <span class="milestone-row__done-label">' + escapeHtml(t('app.milestone.complete')) + '</span>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function milestoneTrackHtml(stat, targets, cur) {
+    var html = '<div class="milestone-track">';
+    html += '<h3 class="milestone-track__title">' + escapeHtml(t('app.milestone.track.' + stat)) + '</h3>';
+    var next = nextMilestoneTarget(cur, targets);
+    if (next === null) {
+      html += '<p class="milestone-track__all-done">' + escapeHtml(t('app.milestone.all_done.' + stat)) + '</p>';
+    } else {
+      html += milestoneRowHtml(stat, next, cur);
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderMilestonesUI() {
+    var listEl = document.getElementById('milestoneList');
+    var hubTeaser = document.getElementById('milestoneHubTeaser');
+    var pageSum = document.getElementById('milestonePageSummary');
+    var s = Math.max(0, milestoneStatsCache.sessions);
+    var m = Math.max(0, milestoneStatsCache.mvps);
+    var unlocked = countMilestonesCompleted(s, SESSION_MILESTONES) + countMilestonesCompleted(m, MVP_MILESTONES);
+
+    var html = milestoneTrackHtml('sessions', SESSION_MILESTONES, s);
+    html += milestoneTrackHtml('mvp', MVP_MILESTONES, m);
+
+    html += '<div class="milestone-row milestone-row--future">';
+    html += '<div class="milestone-row__head"><span class="milestone-row__title">' + escapeHtml(t('app.milestone.goals_title')) + '</span>';
+    html += '<span class="milestone-row__soon">' + escapeHtml(t('app.milestone.soon_badge')) + '</span></div>';
+    html += '<p class="milestone-row__future-desc">' + escapeHtml(t('app.milestone.goals_body')) + '</p></div>';
+
+    if (listEl) listEl.innerHTML = html;
+
+    var summary = t('app.milestone.summary', { unlocked: unlocked, total: MILESTONE_TOTAL_COUNT });
+    if (hubTeaser) hubTeaser.textContent = summary;
+    if (pageSum) pageSum.textContent = summary;
+  }
+
+  function updateMilestoneStatsFromUserDoc(data) {
+    milestoneStatsCache.sessions = data.sessionsPlayed || 0;
+    milestoneStatsCache.mvps = data.mvpCount || 0;
+    renderMilestonesUI();
+  }
 
   /* ---------- DOM REFS ---------- */
   var els = {};
@@ -55,13 +156,84 @@
     renderRoster();
     updateStats();
 
+    document.addEventListener('niterun:lang', function () {
+      renderMilestonesUI();
+      updatePlayerNameFieldCopy();
+    });
+
     if (user) {
       populateUserInfo(user);
+      setupSessionMode();
+      setupOfficialGroups(user);
+      setupHowToUse();
+      setupUserMenu();
       listenLiveSessions(user);
       setupAvatarUpload(user);
       setupNotifications(user);
       setupFriendsCard();
       setupAccountSettings();
+    }
+  }
+
+  function setupUserMenu() {
+    var btn = document.getElementById('topbarUserBtn');
+    var menu = document.getElementById('userMenu');
+    var wrap = document.getElementById('topbarUserWrap');
+    if (!btn || !menu) return;
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = !menu.classList.contains('user-menu--open');
+      if (willOpen) {
+        var notifDd = document.getElementById('notifDropdown');
+        if (notifDd) notifDd.classList.remove('notif-dropdown--open');
+      }
+      menu.classList.toggle('user-menu--open');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!menu.classList.contains('user-menu--open')) return;
+      if (wrap && wrap.contains(e.target)) return;
+      menu.classList.remove('user-menu--open');
+    });
+
+    menu.querySelectorAll('[data-user-menu]').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var action = item.getAttribute('data-user-menu');
+        menu.classList.remove('user-menu--open');
+        if (action === 'profile') switchView('profile');
+        if (action === 'settings') switchView('settings');
+        if (action === 'logout') {
+          if (typeof auth !== 'undefined' && auth.signOut) {
+            auth.signOut().then(function () {
+              window.location.href = 'auth.html';
+            });
+          }
+        }
+      });
+    });
+  }
+
+  function setupHowToUse() {
+    if (els.howtoQuickBtn) {
+      els.howtoQuickBtn.addEventListener('click', function () {
+        forceQuickFlow = true;
+        switchView('session');
+        if (els.sessionMode) {
+          els.sessionMode.value = 'quick';
+          try { els.sessionMode.dispatchEvent(new Event('change')); } catch (e) {}
+        }
+        beginQuickSessionRoster();
+      });
+    }
+
+    if (els.howtoGroupBtn) {
+      els.howtoGroupBtn.addEventListener('click', function () {
+        switchView('groups');
+        setTimeout(function () {
+          if (els.createOfficialGroupBtn) els.createOfficialGroupBtn.click();
+        }, 120);
+      });
     }
   }
 
@@ -134,15 +306,15 @@
     return '<div class="live-card" data-session-id="' + id + '">' +
       '<div class="live-card__header">' +
         '<span class="live-card__pulse"></span>' +
-        '<span class="live-card__label">LIVE</span>' +
+        '<span class="live-card__label">' + escapeHtml(t('app.live')) + '</span>' +
         (isCreator
-          ? '<button class="live-card__close-btn" data-session-id="' + id + '" title="End session">End</button>'
+          ? '<button class="live-card__close-btn" data-session-id="' + id + '" title="' + escapeHtml(t('app.session.end')) + '">' + escapeHtml(t('app.actions.end')) + '</button>'
           : '') +
       '</div>' +
-      '<h3 class="live-card__venue">' + escapeHtml(data.venue || 'Session') + '</h3>' +
+      '<h3 class="live-card__venue">' + escapeHtml(data.venue || t('app.session.session')) + '</h3>' +
       '<p class="live-card__meta">' + meta + '</p>' +
-      '<p class="live-card__info">' + teamCount + ' teams &middot; ' + playerCount + ' players</p>' +
-      '<p class="live-card__creator">by ' + escapeHtml(data.creatorName || 'Unknown') + '</p>' +
+      '<p class="live-card__info">' + escapeHtml(t('app.session.teams_players', { teams: teamCount, players: playerCount })) + '</p>' +
+      '<p class="live-card__creator">' + escapeHtml(t('app.session.by', { name: (data.creatorName || t('app.unknown')) })) + '</p>' +
     '</div>';
   }
 
@@ -154,7 +326,7 @@
     var closeX = document.getElementById('sessionDetailClose');
     if (!overlay || !bodyEl) return;
 
-    if (titleEl) titleEl.textContent = data.venue || 'Session';
+    if (titleEl) titleEl.textContent = data.venue || t('app.session.session');
 
     var teamNames = ['Team A', 'Team B', 'Team C', 'Team D', 'Team E', 'Team F', 'Team G', 'Team H'];
 
@@ -163,13 +335,13 @@
     if (data.date) metaParts.push(data.date);
     if (data.time) metaParts.push(data.time);
     html += '<p class="session-detail__meta">' + metaParts.join(' &middot; ') + '</p>';
-    html += '<p class="session-detail__creator">Created by ' + escapeHtml(data.creatorName || 'Unknown') + '</p>';
+    html += '<p class="session-detail__creator">' + escapeHtml(t('app.session.created_by', { name: (data.creatorName || t('app.unknown')) })) + '</p>';
 
     if (Array.isArray(data.teams)) {
       html += '<div class="session-detail__teams">';
       data.teams.forEach(function (team, idx) {
         html += '<div class="session-detail__team">';
-        html += '<h4 class="session-detail__team-name">' + escapeHtml(team.name || teamNames[idx] || 'Team') + '</h4>';
+            html += '<h4 class="session-detail__team-name">' + escapeHtml(team.name || teamNames[idx] || t('app.team')) + '</h4>';
         html += '<ul class="session-detail__roster">';
         if (Array.isArray(team.players)) {
           team.players.forEach(function (p) {
@@ -188,7 +360,7 @@
             html += '<li class="session-detail__player">' +
               avatarHtml +
               '<span class="' + nameClass + '">' + escapeHtml(p.name) + '</span>' +
-              '<span class="session-detail__player-pos">' + (p.position || 'HYB') + '</span>' +
+              '<span class="session-detail__player-pos">' + escapeHtml(t('app.player.pos.' + ((p.position || 'HYB') === 'HYB' ? 'hybrid' : ((p.position || 'HYB') === 'ATK' ? 'attacker' : ((p.position || 'HYB') === 'DEF' ? 'defender' : ((p.position || 'HYB') === 'GK' ? 'goalkeeper' : 'hybrid')))))) + '</span>' +
               ratingHtml +
             '</li>';
           });
@@ -249,7 +421,7 @@
     var closeX = document.getElementById('sessionDetailClose');
     if (!overlay || !bodyEl) return;
 
-    if (titleEl) titleEl.textContent = 'Select MVP';
+    if (titleEl) titleEl.textContent = t('app.mvp.title');
 
     var allPlayers = [];
     if (Array.isArray(data.players)) {
@@ -259,7 +431,7 @@
     }
 
     var html = '';
-    html += '<p class="mvp-picker__prompt">Who was the MVP this session?</p>';
+    html += '<p class="mvp-picker__prompt">' + escapeHtml(t('app.mvp.prompt')) + '</p>';
     html += '<div class="mvp-picker__list">';
     allPlayers.forEach(function (p) {
       html += '<button class="mvp-picker__option" data-player="' + escapeHtml(p.name) + '" data-uid="' + (p.uid || '') + '">' +
@@ -311,7 +483,7 @@
         closedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }).then(function () {
-      showToast(playerName + ' is the MVP!', 'success');
+      showToast(t('toast.mvp', { name: playerName }), 'success');
 
       if (playerUid) {
         db.collection('users').doc(playerUid).update({
@@ -326,7 +498,7 @@
       }
     }).catch(function (err) {
       console.error('Failed to close session:', err);
-      showToast('Error closing session', 'info');
+      showToast(t('toast.close_session_error'), 'info');
     });
   }
 
@@ -363,6 +535,7 @@
     els.pageTitle = document.getElementById('pageTitle');
     els.addForm = document.getElementById('addPlayerForm');
     els.playerName = document.getElementById('playerName');
+    els.playerNameHint = document.getElementById('playerNameHint');
     els.playerRating = document.getElementById('playerRating');
     els.ratingVal = document.getElementById('ratingVal');
     els.roster = document.getElementById('roster');
@@ -389,7 +562,23 @@
     els.searchResults = document.getElementById('searchResults');
     els.groupsList = document.getElementById('groupsList');
     els.groupsEmpty = document.getElementById('groupsEmpty');
-    els.createGroupBtn = document.getElementById('createGroupBtn');
+    // Official groups (Firestore)
+    els.createOfficialGroupBtn = document.getElementById('createOfficialGroupBtn');
+    els.joinGroupBtn = document.getElementById('joinGroupBtn');
+
+    // Session mode / official group selection
+    els.sessionMode = document.getElementById('sessionMode');
+    els.officialGroupWrap = document.getElementById('officialGroupWrap');
+    els.officialGroupSelect = document.getElementById('officialGroupSelect');
+    els.officialGroupHint = document.getElementById('officialGroupHint');
+    els.manageGroupsBtn = document.getElementById('manageGroupsBtn');
+    els.resultsConfirmHint = document.getElementById('resultsConfirmHint');
+    els.sessionModeCard = document.getElementById('sessionModeCard');
+
+    // How to use buttons
+    els.howtoQuickBtn = document.getElementById('howtoQuickBtn');
+    els.howtoGroupBtn = document.getElementById('howtoGroupBtn');
+
     els.generateLoading = document.getElementById('generateLoading');
     els.toggleDark = document.getElementById('toggleDark');
   }
@@ -412,10 +601,115 @@
 
   function saveData() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+      if (!isQuickSessionMode()) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       localStorage.setItem(GAMES_KEY, String(gamesGenerated));
       localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
     } catch (e) { /* silently fail */ }
+  }
+
+  function stripUidsFromQuickRoster() {
+    if (!isQuickSessionMode()) return;
+    var changed = false;
+    players.forEach(function (p) {
+      if (p.uid || p.photoURL) {
+        p.uid = null;
+        p.photoURL = null;
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveData();
+      renderRoster();
+    }
+  }
+
+  function updatePlayerNameFieldCopy() {
+    if (!els.playerName) return;
+    var hintEl = els.playerNameHint || document.getElementById('playerNameHint');
+    if (isQuickSessionMode()) {
+      if (hintEl) hintEl.textContent = t('app.player.name_hint_quick');
+      els.playerName.placeholder = t('app.player.name_ph_quick');
+    } else {
+      if (hintEl) {
+        hintEl.textContent = selectedGroupId
+          ? t('app.player.name_hint_official')
+          : t('app.player.name_hint_official_need_group');
+      }
+      els.playerName.placeholder = selectedGroupId
+        ? t('app.player.name_ph_official')
+        : t('app.player.name_ph');
+    }
+  }
+
+  function invalidateGroupMemberMentionCache() {
+    groupMemberMentionCache = {};
+  }
+
+  function fetchGroupMembersForMentions(groupId) {
+    if (!groupId || typeof db === 'undefined' || !db || !currentUser) return Promise.resolve([]);
+    var cached = groupMemberMentionCache[groupId];
+    var now = Date.now();
+    if (cached && (now - cached.ts < 90000)) return Promise.resolve(cached.list);
+    return db.collection('groups').doc(groupId).collection('members').get().then(function (snap) {
+      var list = [];
+      snap.forEach(function (d) {
+        var data = d.data() || {};
+        list.push({
+          uid: d.id,
+          displayName: data.displayName || '',
+          username: String(data.username || '').toLowerCase(),
+          photoURL: data.photoURL || null
+        });
+      });
+      groupMemberMentionCache[groupId] = { ts: Date.now(), list: list };
+      return list;
+    }).catch(function (err) {
+      console.error('Group members load error:', err);
+      return [];
+    });
+  }
+
+  function filterMembersByMentionQuery(list, query) {
+    var q = String(query || '').toLowerCase().trim();
+    if (!q) return [];
+    var scored = [];
+    list.forEach(function (m) {
+      if (!currentUser || m.uid === currentUser.uid) return;
+      var un = m.username || '';
+      var dn = (m.displayName || '').toLowerCase();
+      var rank = -1;
+      if (un.indexOf(q) === 0) rank = 0;
+      else if (un.indexOf(q) >= 0) rank = 1;
+      else if (dn.indexOf(q) === 0) rank = 2;
+      else if (dn.indexOf(q) >= 0) rank = 3;
+      if (rank < 0) return;
+      scored.push({ m: m, rank: rank });
+    });
+    scored.sort(function (a, b) {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return (a.m.displayName || '').localeCompare(b.m.displayName || '');
+    });
+    return scored.map(function (x) { return x.m; }).slice(0, 8);
+  }
+
+  function beginQuickSessionRoster() {
+    players = [];
+    editingId = null;
+    pendingSession = null;
+    selectedPlayerUid = null;
+    selectedPlayerPhoto = null;
+    var md = document.getElementById('mentionDropdown');
+    if (md) md.innerHTML = '';
+    if (els.addForm) els.addForm.reset();
+    if (els.ratingVal) els.ratingVal.textContent = '5';
+    if (els.playerName) els.playerName.classList.remove('add-form__input--linked');
+    renderRoster();
+    saveData();
+    updatePlayerNameFieldCopy();
   }
 
   /* ---------- DARK MODE ---------- */
@@ -435,6 +729,454 @@
         try { localStorage.setItem(DARK_KEY, on ? '1' : '0'); } catch (e) {}
       });
     }
+  }
+
+  /* =========================================================
+     OFFICIAL GROUPS + SESSION MODE
+     ========================================================= */
+
+  function setupSessionMode() {
+    if (!els.sessionMode) return;
+
+    function applyModeUI() {
+      if (forceQuickFlow) {
+        els.sessionMode.value = 'quick';
+        if (els.sessionModeCard) els.sessionModeCard.style.display = 'none';
+      } else {
+        if (els.sessionModeCard) els.sessionModeCard.style.display = '';
+      }
+
+      var mode = els.sessionMode.value || 'quick';
+      if (els.officialGroupWrap) els.officialGroupWrap.style.display = mode === 'official' ? '' : 'none';
+
+      if (mode !== 'official') {
+        selectedGroupId = '';
+        selectedGroup = null;
+        if (els.officialGroupSelect) els.officialGroupSelect.value = '';
+      }
+
+      stripUidsFromQuickRoster();
+      updatePlayerNameFieldCopy();
+      updateOfficialGroupHint();
+      updateConfirmButtonState();
+    }
+
+    els.sessionMode.addEventListener('change', applyModeUI);
+
+    if (els.officialGroupSelect) {
+      els.officialGroupSelect.addEventListener('change', function () {
+        selectedGroupId = els.officialGroupSelect.value || '';
+        selectedGroup = officialGroups.find(function (g) { return g.id === selectedGroupId; }) || null;
+        invalidateGroupMemberMentionCache();
+        var md = document.getElementById('mentionDropdown');
+        if (md) md.innerHTML = '';
+        selectedPlayerUid = null;
+        selectedPlayerPhoto = null;
+        if (els.playerName) els.playerName.classList.remove('add-form__input--linked');
+        updatePlayerNameFieldCopy();
+        updateOfficialGroupHint();
+        updateConfirmButtonState();
+      });
+    }
+
+    if (els.manageGroupsBtn) {
+      els.manageGroupsBtn.addEventListener('click', function () {
+        switchView('groups');
+      });
+    }
+
+    applyModeUI();
+    updatePlayerNameFieldCopy();
+  }
+
+  function isOfficialModeReady() {
+    if (!els.sessionMode || els.sessionMode.value !== 'official') return false;
+    if (!selectedGroup) return false;
+    return !!selectedGroup.isVerified && selectedGroup.myRole === 'admin';
+  }
+
+  function updateOfficialGroupHint() {
+    if (!els.officialGroupHint) return;
+    if (!els.sessionMode || els.sessionMode.value !== 'official') {
+      els.officialGroupHint.textContent = '';
+      return;
+    }
+
+    if (!selectedGroup) {
+      els.officialGroupHint.textContent = t('app.official_group_hint.select_group');
+      return;
+    }
+
+    var verified = !!selectedGroup.isVerified;
+    var v = selectedGroup.verifiedMemberCount || 0;
+    var role = selectedGroup.myRole || 'member';
+
+    if (!verified) {
+      els.officialGroupHint.textContent = t('app.official_group_hint.verification', { count: v });
+      return;
+    }
+    if (role !== 'admin') {
+      els.officialGroupHint.textContent = t('app.official_group_hint.not_admin');
+      return;
+    }
+
+    els.officialGroupHint.textContent = t('app.official_group_hint.verified');
+  }
+
+  function updateConfirmButtonState() {
+    var btn = document.getElementById('resultsConfirm');
+    if (!btn) return;
+
+    if (!els.sessionMode || els.sessionMode.value !== 'official') {
+      btn.style.display = 'none';
+      if (els.resultsConfirmHint) els.resultsConfirmHint.textContent = t('app.results.quick_hint');
+      return;
+    }
+
+    btn.style.display = '';
+    btn.disabled = !isOfficialModeReady();
+    if (els.resultsConfirmHint) {
+      els.resultsConfirmHint.textContent = isOfficialModeReady()
+        ? ''
+        : t('app.results.official_hint');
+    }
+  }
+
+  function setupOfficialGroups(user) {
+    if (!user || typeof db === 'undefined' || !db) return;
+
+    if (els.createOfficialGroupBtn) {
+      els.createOfficialGroupBtn.addEventListener('click', function () {
+        showModal({
+          title: t('modal.new_group.title'),
+          message: t('modal.new_group.body'),
+          inputMode: true,
+          placeholder: t('modal.new_group.placeholder'),
+          confirmText: t('modal.action.create'),
+          onConfirm: function (val) {
+            var name = (val || '').trim();
+            if (!name) return;
+            createOfficialGroup(name);
+          }
+        });
+      });
+    }
+
+    if (els.joinGroupBtn) {
+      els.joinGroupBtn.addEventListener('click', function () {
+        showModal({
+          title: t('modal.join_group.title'),
+          message: t('modal.join_group.body'),
+          inputMode: true,
+          placeholder: t('modal.join_group.placeholder'),
+          confirmText: t('modal.action.join'),
+          onConfirm: function (val) {
+            var code = (val || '').trim().toUpperCase();
+            if (!code) return;
+            joinGroupByCode(code);
+          }
+        });
+      });
+    }
+
+    // Load groups list from the user's `groupIds` array (populated on join/create).
+    db.collection('users').doc(user.uid).onSnapshot(function (doc) {
+      var groupIds = [];
+      if (doc.exists) {
+        var d = doc.data() || {};
+        if (Array.isArray(d.groupIds)) groupIds = d.groupIds.slice();
+      }
+      loadOfficialGroups(groupIds);
+    });
+  }
+
+  function loadOfficialGroups(groupIds) {
+    if (!currentUser || !db) return;
+
+    officialGroups = [];
+
+    if (!groupIds || groupIds.length === 0) {
+      renderOfficialGroups();
+      renderOfficialGroupSelect();
+      updateOfficialGroupHint();
+      updateConfirmButtonState();
+      return;
+    }
+
+    var pending = groupIds.length;
+    var results = [];
+
+    groupIds.forEach(function (gid) {
+      db.collection('groups').doc(gid).get().then(function (gdoc) {
+        if (!gdoc.exists) return;
+        var g = gdoc.data() || {};
+        return db.collection('groups').doc(gid).collection('members').doc(currentUser.uid).get().then(function (mdoc) {
+          var role = 'member';
+          if (mdoc.exists) role = (mdoc.data().role || 'member');
+          results.push({
+            id: gid,
+            name: g.name || 'Group',
+            joinCode: g.joinCode || '',
+            isVerified: !!g.isVerified,
+            memberCount: g.memberCount || 0,
+            verifiedMemberCount: g.verifiedMemberCount || 0,
+            myRole: role
+          });
+        });
+      }).catch(function () {}).finally(function () {
+        pending--;
+        if (pending === 0) finalize();
+      });
+    });
+
+    function finalize() {
+      officialGroups = results.sort(function (a, b) {
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      renderOfficialGroups();
+      renderOfficialGroupSelect();
+
+      if (selectedGroupId) {
+        selectedGroup = officialGroups.find(function (g) { return g.id === selectedGroupId; }) || null;
+      }
+
+      updateOfficialGroupHint();
+      updateConfirmButtonState();
+    }
+  }
+
+  function renderOfficialGroupSelect() {
+    if (!els.officialGroupSelect) return;
+    var html = '<option value="">Select a group…</option>';
+    officialGroups.forEach(function (g) {
+      html += '<option value="' + g.id + '">' + escapeHtml(g.name) + '</option>';
+    });
+    els.officialGroupSelect.innerHTML = html;
+    if (selectedGroupId) els.officialGroupSelect.value = selectedGroupId;
+  }
+
+  function renderOfficialGroups() {
+    if (!els.groupsList) return;
+
+    var items = els.groupsList.querySelectorAll('.group-item');
+    items.forEach(function (item) { item.remove(); });
+
+    if (!officialGroups || officialGroups.length === 0) {
+      if (els.groupsEmpty) els.groupsEmpty.style.display = '';
+      return;
+    }
+    if (els.groupsEmpty) els.groupsEmpty.style.display = 'none';
+
+    officialGroups.forEach(function (g) {
+      var item = document.createElement('div');
+      item.className = 'group-item';
+      var initial = (g.name || 'G').charAt(0).toUpperCase();
+      var verified = !!g.isVerified;
+      var v = g.verifiedMemberCount || 0;
+      var status = verified ? 'Verified' : (v + ' / 10 verified');
+      var roleTag = g.myRole === 'admin' ? 'Admin' : 'Member';
+
+      item.innerHTML =
+        '<div class="group-item__info">' +
+          '<div class="group-item__badge">' + initial + '</div>' +
+          '<div>' +
+            '<span class="group-item__name">' + escapeHtml(g.name) + '</span><br>' +
+            '<span class="group-item__count">' + escapeHtml(status) + ' · ' + roleTag + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="roster__actions">' +
+          (verified && g.myRole === 'admin'
+            ? '<button class="roster__btn roster__btn--edit" data-create-session="' + g.id + '" title="Create official session">+</button>'
+            : '') +
+          (g.joinCode
+            ? '<button class="roster__btn roster__btn--edit" data-copy="' + escapeHtml(g.joinCode) + '" title="Copy invite code">⎘</button>'
+            : '') +
+        '</div>';
+
+      els.groupsList.appendChild(item);
+    });
+
+    els.groupsList.querySelectorAll('[data-create-session]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var gid = btn.getAttribute('data-create-session') || '';
+        var g = officialGroups.find(function (x) { return x.id === gid; }) || null;
+        if (!g) return;
+        selectedGroupId = gid;
+        selectedGroup = g;
+        forceQuickFlow = false;
+        switchView('session');
+        if (els.sessionMode) {
+          els.sessionMode.value = 'official';
+          try { els.sessionMode.dispatchEvent(new Event('change')); } catch (e2) {}
+        }
+        if (els.officialGroupSelect) {
+          els.officialGroupSelect.value = gid;
+          try { els.officialGroupSelect.dispatchEvent(new Event('change')); } catch (e3) {}
+        }
+      });
+    });
+
+    els.groupsList.querySelectorAll('.roster__btn--edit[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var code = btn.getAttribute('data-copy') || '';
+        copyToClipboard(code);
+        showToast(t('toast.invite_code_copied'), 'success');
+      });
+    });
+  }
+
+  function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch (e) {}
+    try {
+      var el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.position = 'absolute';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    } catch (e) {}
+  }
+
+  function makeJoinCode() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var code = '';
+    for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    return code;
+  }
+
+  function createOfficialGroup(name) {
+    if (!currentUser || !db) return;
+
+    var joinCode = makeJoinCode();
+    var attempts = 0;
+
+    function tryCreate() {
+      attempts++;
+      db.collection('groups').where('joinCode', '==', joinCode).limit(1).get().then(function (snap) {
+        if (!snap.empty && attempts < 5) {
+          joinCode = makeJoinCode();
+          return tryCreate();
+        }
+
+        return db.collection('groups').add({
+          name: name,
+          ownerUid: currentUser.uid,
+          joinCode: joinCode,
+          memberCount: 1,
+          verifiedMemberCount: 1,
+          isVerified: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function (ref) {
+          var gid = ref.id;
+          var batch = db.batch();
+          var memberRef = db.collection('groups').doc(gid).collection('members').doc(currentUser.uid);
+          batch.set(memberRef, {
+            role: 'admin',
+            joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            emailVerified: true,
+            displayName: currentUser.displayName || '',
+            username: '',
+            photoURL: null
+          });
+          var userRef = db.collection('users').doc(currentUser.uid);
+          batch.update(userRef, {
+            groupIds: firebase.firestore.FieldValue.arrayUnion(gid),
+            groupCount: firebase.firestore.FieldValue.increment(1)
+          });
+          return batch.commit().then(function () {
+            showToast(t('toast.group_created'), 'success');
+            // Switch to official mode and preselect this group
+            selectedGroupId = gid;
+            selectedGroup = null;
+            if (els.sessionMode) els.sessionMode.value = 'official';
+            if (els.officialGroupWrap) els.officialGroupWrap.style.display = '';
+          });
+        });
+      }).catch(function (err) {
+        console.error('Create group error:', err);
+        showToast(t('toast.group_create_failed'), 'info');
+      });
+    }
+
+    tryCreate();
+  }
+
+  function joinGroupByCode(code) {
+    if (!currentUser || !db) return;
+
+    db.collection('groups').where('joinCode', '==', code).limit(1).get().then(function (snap) {
+      if (snap.empty) {
+        showToast(t('toast.group_not_found'), 'info');
+        return;
+      }
+      var gdoc = snap.docs[0];
+      var gid = gdoc.id;
+
+      var groupRef = db.collection('groups').doc(gid);
+      var memberRef = groupRef.collection('members').doc(currentUser.uid);
+      var userRef = db.collection('users').doc(currentUser.uid);
+
+      return db.runTransaction(function (tx) {
+        return tx.get(memberRef).then(function (m) {
+          if (m.exists) return { already: true, gid: gid };
+          return tx.get(groupRef).then(function (g) {
+            if (!g.exists) throw new Error('Group missing');
+
+            tx.set(memberRef, {
+              role: 'member',
+              joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              emailVerified: true,
+              displayName: currentUser.displayName || '',
+              username: '',
+              photoURL: null
+            });
+
+            var data = g.data() || {};
+            var nextMemberCount = (data.memberCount || 0) + 1;
+            var nextVerifiedCount = (data.verifiedMemberCount || 0) + 1;
+            var isVerified = nextVerifiedCount >= 10;
+
+            tx.update(groupRef, {
+              memberCount: nextMemberCount,
+              verifiedMemberCount: nextVerifiedCount,
+              isVerified: isVerified
+            });
+
+            tx.update(userRef, {
+              groupIds: firebase.firestore.FieldValue.arrayUnion(gid),
+              groupCount: firebase.firestore.FieldValue.increment(1)
+            });
+
+            return { already: false, gid: gid, verified: isVerified, count: nextVerifiedCount };
+          });
+        });
+      }).then(function (res) {
+        if (res && res.already) {
+          showToast(t('toast.group_already_in'), 'info');
+        } else {
+          showToast(res.verified ? t('toast.group_joined_verified') : t('toast.group_joined_progress', { count: res.count }), 'success');
+        }
+
+        selectedGroupId = gid;
+        if (els.sessionMode) els.sessionMode.value = 'official';
+        if (els.officialGroupWrap) els.officialGroupWrap.style.display = '';
+        switchView('session');
+      });
+    }).catch(function (err) {
+      console.error('Join group error:', err);
+      showToast(t('toast.group_join_failed'), 'info');
+    });
   }
 
   /* ---------- POPULATE USER INFO ---------- */
@@ -463,7 +1205,7 @@
     if (user.metadata && user.metadata.creationTime) {
       joinYear = new Date(user.metadata.creationTime).getFullYear();
     }
-    profileMetas.forEach(function (el) { el.textContent = 'Member since ' + joinYear; });
+    profileMetas.forEach(function (el) { el.textContent = t('app.member_since', { year: joinYear }); });
 
     /* Fetch Firestore user doc for username, mvpCount, sessionsPlayed */
     if (typeof db !== 'undefined' && db) {
@@ -479,6 +1221,7 @@
         var mvps = data.mvpCount || 0;
         var sessions = data.sessionsPlayed || 0;
         var friendCount = data.friendCount || 0;
+        var groupsCount = data.groupCount || (Array.isArray(data.groupIds) ? data.groupIds.length : 0);
 
         var statMvps = document.getElementById('statMvps');
         var statSessions2 = document.getElementById('statSessions2');
@@ -487,6 +1230,18 @@
         if (statMvps) statMvps.textContent = mvps;
         if (statSessions2) statSessions2.textContent = sessions;
         if (statFriends) statFriends.textContent = friendCount;
+
+        // My Stats view (global totals)
+        var statSessionsEl = document.getElementById('statSessions');
+        var statMvpsStats = document.getElementById('statMvpsStats');
+        var statGroupsStats = document.getElementById('statGroupsStats');
+        var statFriendsStats = document.getElementById('statFriendsStats');
+        if (statSessionsEl) statSessionsEl.textContent = sessions;
+        if (statMvpsStats) statMvpsStats.textContent = mvps;
+        if (statGroupsStats) statGroupsStats.textContent = groupsCount;
+        if (statFriendsStats) statFriendsStats.textContent = friendCount;
+
+        updateMilestoneStatsFromUserDoc(data);
 
         /* Update avatars everywhere if photoURL exists */
         if (data.photoURL) {
@@ -623,16 +1378,16 @@
       if (!file) return;
 
       if (!file.type.startsWith('image/')) {
-        showToast('Please select an image file', 'info');
+        showToast(t('toast.avatar_select_image'), 'info');
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        showToast('Image must be under 5 MB', 'info');
+        showToast(t('toast.avatar_size_limit'), 'info');
         return;
       }
 
-      showToast('Uploading...', 'info');
+      showToast(t('toast.uploading'), 'info');
       compressAndUpload(file, user);
       input.value = '';
     });
@@ -660,7 +1415,7 @@
         ctx.drawImage(img, 0, 0, w, h);
 
         canvas.toBlob(function (blob) {
-          if (!blob) { showToast('Failed to process image', 'info'); return; }
+          if (!blob) { showToast(t('toast.avatar_process_failed'), 'info'); return; }
           uploadAvatar(blob, user);
         }, 'image/jpeg', 0.8);
       };
@@ -671,7 +1426,7 @@
 
   function uploadAvatar(blob, user) {
     if (typeof storage === 'undefined' || !storage) {
-      showToast('Storage not available', 'info');
+      showToast(t('toast.storage_unavailable'), 'info');
       return;
     }
 
@@ -688,11 +1443,11 @@
         });
       })
       .then(function () {
-        showToast('Profile photo updated!', 'success');
+        showToast(t('toast.avatar_updated'), 'success');
       })
       .catch(function (err) {
         console.error('Avatar upload error:', err);
-        showToast('Upload failed', 'info');
+        showToast(t('toast.upload_failed'), 'info');
       });
   }
 
@@ -707,6 +1462,11 @@
 
     toggle.addEventListener('click', function (e) {
       e.stopPropagation();
+      var willOpen = !dropdown.classList.contains('notif-dropdown--open');
+      if (willOpen) {
+        var userMenu = document.getElementById('userMenu');
+        if (userMenu) userMenu.classList.remove('user-menu--open');
+      }
       dropdown.classList.toggle('notif-dropdown--open');
     });
 
@@ -755,7 +1515,7 @@
     }
 
     if (notifs.length === 0) {
-      list.innerHTML = '<p class="notif-dropdown__empty">No notifications</p>';
+      list.innerHTML = '<p class="notif-dropdown__empty">' + escapeHtml(t('app.notifications.empty')) + '</p>';
       return;
     }
 
@@ -775,13 +1535,16 @@
 
       if (d.type === 'friend_request' && !d.acted) {
         html += '<div class="notif-item__actions">' +
-          '<button class="notif-item__btn notif-item__btn--accept" data-notif-id="' + n.id + '" data-from-uid="' + d.fromUid + '">Accept</button>' +
-          '<button class="notif-item__btn notif-item__btn--decline" data-notif-id="' + n.id + '">Decline</button>' +
+          '<button class="notif-item__btn notif-item__btn--accept" data-notif-id="' + n.id + '" data-from-uid="' + d.fromUid + '">' + escapeHtml(t('app.notifications.accept')) + '</button>' +
+          '<button class="notif-item__btn notif-item__btn--decline" data-notif-id="' + n.id + '">' + escapeHtml(t('app.notifications.decline')) + '</button>' +
         '</div>';
       }
 
       if (d.acted) {
-        html += '<p class="notif-item__status">' + (d.actedResult || '') + '</p>';
+        var actedKey = d.actedResult === 'Accepted'
+          ? 'app.notifications.accepted'
+          : (d.actedResult === 'Declined' ? 'app.notifications.declined' : '');
+        html += '<p class="notif-item__status">' + escapeHtml(actedKey ? t(actedKey) : (d.actedResult || '')) + '</p>';
       }
 
       html += '</div></div>';
@@ -844,16 +1607,16 @@
         fromName: myData.displayName || currentUser.displayName || 'Player',
         fromUsername: myData.username || '',
         fromPhoto: myData.photoURL || null,
-        message: (myData.displayName || 'Someone') + ' wants to be your friend',
+        message: t('notif.friend_request', { name: (myData.displayName || currentUser.displayName || t('app.someone')) }),
         read: false,
         acted: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }).then(function () {
-      showToast('Friend request sent to ' + toName, 'success');
+      showToast(t('toast.friend_request_sent', { name: toName }), 'success');
     }).catch(function (err) {
       console.error('Friend request error:', err);
-      showToast('Could not send request', 'info');
+      showToast(t('toast.friend_request_failed'), 'info');
     });
   }
 
@@ -880,7 +1643,7 @@
     });
 
     batch.commit().then(function () {
-      showToast('Friend added!', 'success');
+      showToast(t('toast.friend_added'), 'success');
 
       return db.collection('users').doc(currentUser.uid).get();
     }).then(function (doc) {
@@ -891,7 +1654,7 @@
         fromName: myData.displayName || 'Player',
         fromUsername: myData.username || '',
         fromPhoto: myData.photoURL || null,
-        message: (myData.displayName || 'Someone') + ' accepted your friend request',
+        message: t('notif.friend_accepted', { name: (myData.displayName || t('app.someone')) }),
         read: false,
         acted: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -927,11 +1690,11 @@
     });
 
     batch.commit().then(function () {
-      showToast('Friend removed', 'success');
+      showToast(t('toast.friend_removed'), 'success');
       if (callback) callback();
     }).catch(function (err) {
       console.error('Unfriend error:', err);
-      showToast('Could not remove friend', 'info');
+      showToast(t('toast.friend_remove_failed'), 'info');
     });
   }
 
@@ -945,7 +1708,7 @@
     var backBtn = document.getElementById('uviewBack');
     if (!contentEl) return;
 
-    contentEl.innerHTML = '<p class="uview__loading">Loading...</p>';
+    contentEl.innerHTML = '<p class="uview__loading">' + escapeHtml(t('app.loading')) + '</p>';
 
     switchView('user');
 
@@ -963,7 +1726,7 @@
 
     db.collection('users').doc(uid).get().then(function (doc) {
       if (!doc.exists) {
-        contentEl.innerHTML = '<p class="uview__loading">User not found</p>';
+        contentEl.innerHTML = '<p class="uview__loading">' + escapeHtml(t('app.user_not_found')) + '</p>';
         return;
       }
 
@@ -980,12 +1743,12 @@
       }
     }).catch(function (err) {
       console.error('Failed to load user profile:', err);
-      contentEl.innerHTML = '<p class="uview__loading">Error loading profile</p>';
+      contentEl.innerHTML = '<p class="uview__loading">' + escapeHtml(t('app.profile_load_error')) + '</p>';
     });
   }
 
   function renderUserProfile(uid, data, isMe, myFriends, container) {
-    var displayName = data.displayName || 'Player';
+    var displayName = data.displayName || t('app.user.player');
     var username = data.username || '';
     var initial = displayName.charAt(0).toUpperCase();
     var photoHTML = data.photoURL
@@ -1007,21 +1770,21 @@
     if (username) html += '<p class="uview__username">@' + escapeHtml(username) + '</p>';
     if (!isMe) {
       if (isFriend) {
-        html += '<button class="uview__follow-btn uview__follow-btn--following" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '">Friends</button>';
+        html += '<button class="uview__follow-btn uview__follow-btn--following" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '">' + escapeHtml(t('app.friends.friends')) + '</button>';
       } else {
-        html += '<button class="uview__follow-btn" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '">Add Friend</button>';
+        html += '<button class="uview__follow-btn" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '">' + escapeHtml(t('app.friends.add')) + '</button>';
       }
     }
     html += '</div>';
     html += '</div>';
 
     html += '<div class="profile__grid profile__grid--three uview__stats-grid">';
-    html += '<div class="card card--stat"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span class="card--stat__val">' + sessions + '</span><span class="card--stat__label">Sessions</span></div>';
-    html += '<div class="card card--stat uview__friends-stat" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="card--stat__val">' + friendCount + '</span><span class="card--stat__label">Friends</span></div>';
-    html += '<div class="card card--stat"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="card--stat__val">' + mvps + '</span><span class="card--stat__label">MVPs</span></div>';
+    html += '<div class="card card--stat"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span class="card--stat__val">' + sessions + '</span><span class="card--stat__label">' + escapeHtml(t('app.stats.sessions')) + '</span></div>';
+    html += '<div class="card card--stat uview__friends-stat" data-uid="' + uid + '" data-name="' + escapeHtml(displayName) + '"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="card--stat__val">' + friendCount + '</span><span class="card--stat__label">' + escapeHtml(t('app.stats.friends')) + '</span></div>';
+    html += '<div class="card card--stat"><svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8L6 20H18L20 8M4 8L5.71624 9.37299C6.83218 10.2657 7.39014 10.7121 7.95256 10.7814C8.4453 10.8421 8.94299 10.7173 9.34885 10.4314C9.81211 10.1051 10.0936 9.4483 10.6565 8.13476L12 5M4 8C4.55228 8 5 7.55228 5 7C5 6.44772 4.55228 6 4 6C3.44772 6 3 6.44772 3 7C3 7.55228 3.44772 8 4 8ZM20 8L18.2838 9.373C17.1678 10.2657 16.6099 10.7121 16.0474 10.7814C15.5547 10.8421 15.057 10.7173 14.6511 10.4314C14.1879 10.1051 13.9064 9.4483 13.3435 8.13476L12 5M20 8C20.5523 8 21 7.55228 21 7C21 6.44772 20.5523 6 20 6C19.4477 6 19 6.44772 19 7C19 7.55228 19.4477 8 20 8ZM12 5C12.5523 5 13 4.55228 13 4C13 3.44772 12.5523 3 12 3C11.4477 3 11 3.44772 11 4C11 4.55228 11.4477 5 12 5ZM12 4H12.01M20 7H20.01M4 7H4.01"/></svg><span class="card--stat__val">' + mvps + '</span><span class="card--stat__label">' + escapeHtml(t('app.stats.mvps')) + '</span></div>';
     html += '</div>';
 
-    html += '<div class="card"><h2 class="card__title">Session History</h2><div id="uviewSessionHistory"><p class="uview__loading">Loading...</p></div></div>';
+    html += '<div class="card"><h2 class="card__title">' + escapeHtml(t('app.session_history.title')) + '</h2><div id="uviewSessionHistory"><p class="uview__loading">' + escapeHtml(t('app.loading')) + '</p></div></div>';
 
     container.innerHTML = html;
 
@@ -1034,17 +1797,17 @@
         var isFollowing = followBtn.classList.contains('uview__follow-btn--following');
 
         if (isFollowing) {
-          if (confirm('Remove ' + targetName + ' from your friends?')) {
+          if (confirm(t('app.friends.confirm_remove', { name: targetName }))) {
             removeFriend(targetUid, function () {
               followBtn.classList.remove('uview__follow-btn--following');
-              followBtn.textContent = 'Add Friend';
+              followBtn.textContent = t('app.friends.add');
             });
           }
         } else if (followBtn.classList.contains('uview__follow-btn--sent')) {
           return;
         } else {
           sendFriendRequest(targetUid, targetName);
-          followBtn.textContent = 'Requested';
+          followBtn.textContent = t('app.friends.requested');
           followBtn.classList.add('uview__follow-btn--sent');
         }
       });
@@ -1076,10 +1839,10 @@
     if (contentArea) contentArea.scrollTop = 0;
 
     var html = '<div class="flist">';
-    html += '<h2 class="flist__title">' + escapeHtml(ownerName) + '\'s Friends</h2>';
+    html += '<h2 class="flist__title">' + escapeHtml(t('app.friends_list.title', { name: ownerName })) + '</h2>';
 
     if (!friendUids || friendUids.length === 0) {
-      html += '<div class="flist__empty">No friends yet</div>';
+      html += '<div class="flist__empty">' + escapeHtml(t('app.friends_list.empty')) + '</div>';
       html += '</div>';
       contentEl.innerHTML = html;
       backBtn.onclick = function () { openUserProfile(uid); };
@@ -1107,7 +1870,7 @@
             : initial;
 
           var removeHtml = isOwnList
-            ? '<span class="flist__remove" data-uid="' + doc.id + '" data-name="' + escapeHtml(f.displayName || 'Unknown') + '">Remove</span>'
+            ? '<span class="flist__remove" data-uid="' + doc.id + '" data-name="' + escapeHtml(f.displayName || t('app.unknown')) + '">' + escapeHtml(t('app.actions.remove')) + '</span>'
             : '';
 
           rows.push(
@@ -1115,7 +1878,7 @@
               '<div class="flist__row-left">' +
                 '<span class="flist__avatar' + (f.photoURL ? ' has-photo' : '') + '">' + photoHtml + '</span>' +
                 '<span class="flist__info">' +
-                  '<span class="flist__name">' + escapeHtml(f.displayName || 'Unknown') + '</span>' +
+                  '<span class="flist__name">' + escapeHtml(f.displayName || t('app.unknown')) + '</span>' +
                   '<span class="flist__uname">@' + escapeHtml(f.username || '') + '</span>' +
                 '</span>' +
               '</div>' +
@@ -1125,7 +1888,7 @@
         }
 
         if (loaded === friendUids.length) {
-          listEl.innerHTML = rows.join('') || '<div class="flist__empty">No friends yet</div>';
+          listEl.innerHTML = rows.join('') || '<div class="flist__empty">' + escapeHtml(t('app.friends_list.empty')) + '</div>';
 
           listEl.querySelectorAll('.flist__row-left').forEach(function (left) {
             left.style.cursor = 'pointer';
@@ -1144,7 +1907,7 @@
               e.stopPropagation();
               var targetUid = btn.getAttribute('data-uid');
               var targetName = btn.getAttribute('data-name');
-              if (confirm('Remove ' + targetName + ' from your friends?')) {
+              if (confirm(t('app.friends.confirm_remove', { name: targetName }))) {
                 removeFriend(targetUid, function () {
                   var remaining = friendUids.filter(function (u) { return u !== targetUid; });
                   openFriendsList(uid, ownerName, remaining);
@@ -1194,6 +1957,7 @@
           fromName: creatorName,
           fromUsername: myData.username || '',
           fromPhoto: myData.photoURL || null,
+          venue: venue || '',
           message: creatorName + ' added you to a session' + (venue ? ' at ' + venue : ''),
           read: false,
           acted: false,
@@ -1216,6 +1980,7 @@
         fromName: creatorName,
         fromUsername: myData.username || '',
         fromPhoto: myData.photoURL || null,
+        venue: venue || '',
         message: 'You were voted MVP' + (venue ? ' at ' + venue : '') + '!',
         read: false,
         acted: false,
@@ -1244,6 +2009,8 @@
           fromName: creatorName,
           fromUsername: myData.username || '',
           fromPhoto: myData.photoURL || null,
+          venue: venue || '',
+          mvpName: mvpName || '',
           message: 'Session' + (venue ? ' at ' + venue : '') + ' ended. MVP: ' + (mvpName || 'N/A'),
           read: false,
           acted: false,
@@ -1291,7 +2058,7 @@
         if (!currentUser || typeof db === 'undefined' || !db) return;
         var on = notifsToggle.checked;
         db.collection('users').doc(currentUser.uid).update({ inAppNotifications: on }).then(function () {
-          showToast(on ? 'Notifications on' : 'Notifications off', 'success');
+          showToast(on ? t('toast.notifications_on') : t('toast.notifications_off'), 'success');
         }).catch(function (err) {
           console.error('Failed to update notification preference:', err);
           notifsToggle.checked = !on;
@@ -1311,7 +2078,7 @@
         if (!currentUser || typeof db === 'undefined' || !db) return;
         var on = emailNotifsToggle.checked;
         db.collection('users').doc(currentUser.uid).update({ emailNotifications: on }).then(function () {
-          showToast(on ? 'Email notifications on' : 'Email notifications off', 'success');
+          showToast(on ? t('toast.email_notifications_on') : t('toast.email_notifications_off'), 'success');
         }).catch(function (err) {
           console.error('Failed to update email preference:', err);
           emailNotifsToggle.checked = !on;
@@ -1327,7 +2094,7 @@
       autosaveToggle.addEventListener('change', function () {
         var on = autosaveToggle.checked;
         try { localStorage.setItem('niterun_autosave', on ? '1' : '0'); } catch (e) {}
-        showToast(on ? 'Auto-save on' : 'Auto-save off — roster cleared on new session', 'success');
+        showToast(on ? t('toast.autosave_on') : t('toast.autosave_off'), 'success');
       });
     }
 
@@ -1335,7 +2102,7 @@
       saveBtn.addEventListener('click', function () {
         var newName = nameInput ? nameInput.value.trim() : '';
         if (!newName || newName.length < 2) {
-          showToast('Name must be at least 2 characters', 'info');
+          showToast(t('toast.name_min_chars'), 'info');
           return;
         }
         if (!currentUser) return;
@@ -1346,14 +2113,14 @@
             displayNameLower: newName.toLowerCase()
           });
         }).then(function () {
-          showToast('Name updated!', 'success');
+          showToast(t('toast.name_updated'), 'success');
           var topbarName = document.querySelector('.topbar__name');
           var profileNames = document.querySelectorAll('.profile__name');
           if (topbarName) topbarName.textContent = newName;
           profileNames.forEach(function (el) { el.textContent = newName; });
         }).catch(function (err) {
           console.error('Failed to update name:', err);
-          showToast('Could not update name', 'info');
+          showToast(t('toast.name_update_failed'), 'info');
         });
       });
     }
@@ -1365,7 +2132,7 @@
     var emailNote = document.getElementById('emailNote');
 
     if (currentEmailDisplay && currentUser) {
-      currentEmailDisplay.textContent = currentUser.email || 'No email set';
+      currentEmailDisplay.textContent = currentUser.email || t('app.account.no_email_set');
     }
 
     if (saveEmailBtn && editEmailInput) {
@@ -1374,30 +2141,30 @@
         var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
         if (!newEmail) {
-          setEmailNote('Enter a new email address.', 'error');
+          setEmailNote(t('app.account.enter_new_email'), 'error');
           return;
         }
         if (!emailRegex.test(newEmail)) {
-          setEmailNote('Please enter a valid email address.', 'error');
+          setEmailNote(t('auth.error.valid_email'), 'error');
           return;
         }
         if (newEmail === currentUser.email) {
-          setEmailNote('That\'s already your current email.', 'error');
+          setEmailNote(t('app.account.email_is_current'), 'error');
           return;
         }
 
         setEmailNote('', '');
 
         showModal({
-          title: 'Confirm Password',
-          message: 'Re-enter your password to change your email.',
+          title: t('modal.confirm_password.title'),
+          message: t('modal.confirm_password.body'),
           inputMode: true,
           inputType: 'password',
-          placeholder: 'Your current password',
-          confirmText: 'Confirm',
+          placeholder: t('modal.confirm_password.placeholder'),
+          confirmText: t('modal.action.confirm'),
           onConfirm: function (password) {
             if (!password) {
-              setEmailNote('Password is required.', 'error');
+              setEmailNote(t('app.account.password_required'), 'error');
               return;
             }
 
@@ -1408,23 +2175,32 @@
                 return currentUser.updateEmail(newEmail);
               })
               .then(function () {
-                return db.collection('users').doc(currentUser.uid).update({ email: newEmail });
+                // Send verification to the NEW email before we consider it final.
+                var sendVerification = functions && functions.httpsCallable ? functions.httpsCallable('sendVerification') : null;
+                if (!sendVerification) throw new Error('Verification not available');
+                return sendVerification();
               })
               .then(function () {
-                if (currentEmailDisplay) currentEmailDisplay.textContent = newEmail;
                 editEmailInput.value = '';
-                setEmailNote('Email updated!', 'success');
-                showToast('Email changed to ' + newEmail, 'success');
+                setEmailNote(t('app.account.verify_new_email_note'), 'success');
+                showToast(t('toast.verification_email_sent', { email: newEmail }), 'success');
+                // Force re-login (app gate requires verified email)
+                return auth.signOut();
+              })
+              .then(function () {
+                window.location.replace('auth.html');
               })
               .catch(function (err) {
                 if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                  setEmailNote('Incorrect password.', 'error');
+                  setEmailNote(t('app.account.incorrect_password'), 'error');
                 } else if (err.code === 'auth/email-already-in-use') {
-                  setEmailNote('That email is already in use.', 'error');
+                  setEmailNote(t('app.account.email_in_use'), 'error');
                 } else if (err.code === 'auth/invalid-email') {
-                  setEmailNote('Invalid email format.', 'error');
+                  setEmailNote(t('app.account.invalid_email'), 'error');
                 } else if (err.code === 'auth/requires-recent-login') {
-                  setEmailNote('Please log out and log back in, then try again.', 'error');
+                  setEmailNote(t('app.account.requires_recent_login'), 'error');
+                } else if (String(err && err.message || '').toLowerCase().indexOf('verification not available') !== -1) {
+                  setEmailNote('Could not send verification email. Try again shortly.', 'error');
                 } else {
                   console.error('Email change error:', err);
                   setEmailNote('Could not update email. Try again.', 'error');
@@ -1446,14 +2222,14 @@
     if (resetPwBtn) {
       resetPwBtn.addEventListener('click', function () {
         if (!currentUser || !currentUser.email) {
-          showToast('No email found', 'info');
+          showToast(t('toast.no_email_found'), 'info');
           return;
         }
         auth.sendPasswordResetEmail(currentUser.email).then(function () {
-          showToast('Reset email sent to ' + currentUser.email, 'success');
+          showToast(t('toast.reset_email_sent', { email: currentUser.email }), 'success');
         }).catch(function (err) {
           console.error('Password reset error:', err);
-          showToast('Could not send reset email', 'info');
+          showToast(t('toast.reset_email_failed'), 'info');
         });
       });
     }
@@ -1464,7 +2240,9 @@
     dashboard: 'Dashboard',
     session: 'Create Session',
     stats: 'My Stats',
+    milestones: 'Milestones',
     groups: 'Groups',
+    howto: 'How to Use',
     search: 'Search',
     profile: 'Profile',
     settings: 'Settings',
@@ -1473,6 +2251,25 @@
 
   function switchView(viewName, opts) {
     opts = opts || {};
+
+    var smEarly = document.getElementById('sessionMode');
+    var leavingQuickSession = viewName !== 'session' && smEarly && smEarly.value === 'quick';
+
+    if (viewName !== 'session') {
+      pendingSession = null;
+    }
+
+    if (leavingQuickSession) {
+      players = [];
+      editingId = null;
+      selectedPlayerUid = null;
+      selectedPlayerPhoto = null;
+      saveData();
+    }
+
+    if (viewName !== 'session') {
+      forceQuickFlow = false;
+    }
 
     /* Save previous view for back navigation (never save 'search' so
        the close-search button always returns to a real content view) */
@@ -1499,7 +2296,7 @@
     var tabbarBtns = document.querySelectorAll('.tabbar__btn[data-view]');
 
     /* Sub-views of dashboard keep "Dashboard" highlighted */
-    var sidebarTarget = (viewName === 'session' || viewName === 'stats' || viewName === 'groups' || viewName === 'search') ? 'dashboard' : (viewName === 'user' ? '' : viewName);
+    var sidebarTarget = (viewName === 'session' || viewName === 'stats' || viewName === 'milestones' || viewName === 'groups' || viewName === 'search') ? 'dashboard' : (viewName === 'user' ? '' : viewName);
 
     sidebarLinks.forEach(function (link) {
       link.classList.toggle('sidebar__link--active', link.getAttribute('data-view') === sidebarTarget);
@@ -1514,6 +2311,8 @@
 
     /* Update stats when viewing stats or profile */
     if (viewName === 'stats' || viewName === 'profile') updateStats();
+
+    if (viewName === 'milestones') renderMilestonesUI();
 
     if (viewName === 'profile' && currentUser) {
       loadSessionHistory(currentUser.uid, 'sessionHistory');
@@ -1530,7 +2329,22 @@
       if (resultsPanel) resultsPanel.style.display = 'none';
       var stepsEl = document.querySelector('.wizard__steps');
       if (stepsEl) stepsEl.style.display = '';
-      goToWizardStep(1);
+      // Quick flow skips match details entirely.
+      var step1Panel = document.getElementById('wizardStep1');
+      if (forceQuickFlow) {
+        if (step1Panel) step1Panel.style.display = 'none';
+        goToWizardStep(2);
+      } else {
+        if (step1Panel) step1Panel.style.display = '';
+        goToWizardStep(1);
+      }
+
+      updateConfirmButtonState();
+
+      // Extra safety: if quick-flow entry, hide the mode card immediately.
+      if (forceQuickFlow && els.sessionModeCard) {
+        els.sessionModeCard.style.display = 'none';
+      }
     }
 
     /* Scroll to top */
@@ -1563,10 +2377,41 @@
 
   /* ---------- HUB PANELS (dashboard → sub-views) ---------- */
   function setupHubPanels() {
+    // Regular nav panels
     var panels = document.querySelectorAll('.hub__panel[data-subview]');
     panels.forEach(function (panel) {
       panel.addEventListener('click', function () {
         switchView(panel.getAttribute('data-subview'));
+      });
+    });
+
+    // Action panels
+    document.querySelectorAll('.hub__panel[data-action]').forEach(function (panel) {
+      panel.addEventListener('click', function () {
+        var action = panel.getAttribute('data-action');
+        if (action === 'quick-session') {
+          forceQuickFlow = true;
+          switchView('session');
+          if (els.sessionMode) {
+            els.sessionMode.value = 'quick';
+            // Trigger UI update
+            try { els.sessionMode.dispatchEvent(new Event('change')); } catch (e) {}
+          }
+          beginQuickSessionRoster();
+          return;
+        }
+
+        if (action === 'create-group') {
+          switchView('groups');
+          setTimeout(function () {
+            if (els.createOfficialGroupBtn) els.createOfficialGroupBtn.click();
+          }, 120);
+          return;
+        }
+
+        if (action === 'group-sessions') {
+          switchView('groups');
+        }
       });
     });
   }
@@ -1610,7 +2455,7 @@
 
   function renderSearchResults(query) {
     if (!query) {
-      els.searchResults.innerHTML = '<p class="search-results__hint">Search for players, groups, or @username to find people.</p>';
+      els.searchResults.innerHTML = '<p class="search-results__hint">' + escapeHtml(t('app.search.hint')) + '</p>';
       return;
     }
 
@@ -1626,10 +2471,10 @@
               '<div class="search-results__badge">' + initial + '</div>' +
               '<div>' +
                 '<span class="search-results__name">' + escapeHtml(p.name) + '</span><br>' +
-                '<span class="search-results__type">Skill ' + p.rating + '</span>' +
+                '<span class="search-results__type">' + escapeHtml(t('app.search.skill', { rating: p.rating })) + '</span>' +
               '</div>' +
             '</div>' +
-            '<span class="search-results__type">player</span>' +
+            '<span class="search-results__type">' + escapeHtml(t('app.search.type.player')) + '</span>' +
           '</div>';
       }
     });
@@ -1644,10 +2489,10 @@
               '<div class="search-results__badge">' + initial + '</div>' +
               '<div>' +
                 '<span class="search-results__name">' + escapeHtml(g.name) + '</span><br>' +
-                '<span class="search-results__type">' + g.players.length + ' players</span>' +
+                '<span class="search-results__type">' + escapeHtml(t('app.players.count', { count: g.players.length })) + '</span>' +
               '</div>' +
             '</div>' +
-            '<span class="search-results__type">group</span>' +
+            '<span class="search-results__type">' + escapeHtml(t('app.search.type.group')) + '</span>' +
           '</div>';
       }
     });
@@ -1673,10 +2518,10 @@
             renderCombinedSearch(localHtml, snapshot, [], query);
           }
         }).catch(function () {
-          els.searchResults.innerHTML = localHtml || '<p class="search-results__hint">No results found for "' + escapeHtml(query) + '".</p>';
+          els.searchResults.innerHTML = localHtml || '<p class="search-results__hint">' + escapeHtml(t('app.search.no_results', { query: query })) + '</p>';
         });
     } else {
-      els.searchResults.innerHTML = localHtml || '<p class="search-results__hint">No results found for "' + escapeHtml(query) + '".</p>';
+      els.searchResults.innerHTML = localHtml || '<p class="search-results__hint">' + escapeHtml(t('app.search.no_results', { query: query })) + '</p>';
     }
   }
 
@@ -1702,7 +2547,7 @@
           '<div class="search-results__info">' +
             '<div class="search-results__badge search-results__badge--user">' + avatarContent + '</div>' +
             '<div>' +
-              '<span class="search-results__name search-results__name--user">' + escapeHtml(u.displayName || 'Unknown') + '</span><br>' +
+          '<span class="search-results__name search-results__name--user">' + escapeHtml(u.displayName || t('app.unknown')) + '</span><br>' +
               '<span class="search-results__type">@' + escapeHtml(u.username || '') + '</span>' +
             '</div>' +
           '</div>' +
@@ -1715,7 +2560,7 @@
     if (localHtml) combined += localHtml;
 
     if (!combined) {
-      els.searchResults.innerHTML = '<p class="search-results__hint">No results found for "' + escapeHtml(query) + '".</p>';
+      els.searchResults.innerHTML = '<p class="search-results__hint">' + escapeHtml(t('app.search.no_results', { query: query })) + '</p>';
       return;
     }
 
@@ -1727,7 +2572,7 @@
         var uid = btn.getAttribute('data-uid');
         var name = btn.getAttribute('data-name');
         sendFriendRequest(uid, name);
-        btn.textContent = 'Sent';
+        btn.textContent = t('app.search.sent');
         btn.disabled = true;
         btn.classList.add('search-results__add-btn--sent');
       });
@@ -1801,31 +2646,50 @@
     var resultsBack = document.getElementById('resultsBack');
     if (resultsBack) resultsBack.addEventListener('click', function () {
       pendingSession = null;
+      var quick = isQuickSessionMode();
       var resultsPanel = document.getElementById('wizardResults');
       if (resultsPanel) resultsPanel.style.display = 'none';
       var stepsEl = document.querySelector('.wizard__steps');
       if (stepsEl) stepsEl.style.display = '';
       goToWizardStep(3);
+      if (quick) {
+        players = [];
+        editingId = null;
+        selectedPlayerUid = null;
+        selectedPlayerPhoto = null;
+        if (els.addForm) els.addForm.reset();
+        if (els.ratingVal) els.ratingVal.textContent = '5';
+        if (els.playerName) els.playerName.classList.remove('add-form__input--linked');
+        var md = document.getElementById('mentionDropdown');
+        if (md) md.innerHTML = '';
+        renderRoster();
+        saveData();
+      }
     });
 
     /* Confirm & Go Live */
     var confirmBtn = document.getElementById('resultsConfirm');
     if (confirmBtn) confirmBtn.addEventListener('click', function () {
       if (!pendingSession) return;
+      if (!isOfficialModeReady()) {
+        showToast(t('app.results.official_hint'), 'info');
+        return;
+      }
       confirmBtn.disabled = true;
-      confirmBtn.innerHTML = 'Going Live\u2026';
+      confirmBtn.innerHTML = escapeHtml(t('app.session.going_live')) + '\u2026';
 
-      saveSessionToFirestore(pendingSession.teams, pendingSession.nTeams, pendingSession.ppt);
+      saveSessionToFirestore(pendingSession.teams, pendingSession.nTeams, pendingSession.ppt, selectedGroup);
 
-      confirmBtn.innerHTML = '\u2713 Session is Live';
+      confirmBtn.innerHTML = '\u2713 ' + escapeHtml(t('app.session.live'));
       confirmBtn.classList.add('btn--confirmed');
       pendingSession = null;
-      showToast('Session is now live!', 'success');
+      showToast(t('toast.session_live'), 'success');
     });
 
     /* New session from results */
     var newSession = document.getElementById('resultsNewSession');
     if (newSession) newSession.addEventListener('click', function () {
+      pendingSession = null;
       players = [];
       editingId = null;
       selectedPosition = 'HYB';
@@ -1882,7 +2746,7 @@
     var nTeams = parseInt(els.numTeams.value, 10);
     var ppt = parseInt(els.playersPerTeam.value, 10);
     var total = nTeams * ppt;
-    els.teamSummary.textContent = nTeams + ' team' + (nTeams > 1 ? 's' : '') + ' \u00D7 ' + ppt + ' player' + (ppt > 1 ? 's' : '') + ' = ' + total + ' players needed';
+    els.teamSummary.textContent = t('app.team_config.summary', { teams: nTeams, ppt: ppt, total: total });
     updatePlayerProgress();
   }
 
@@ -1893,7 +2757,7 @@
 
   function updatePlayerProgress() {
     if (!els.playerProgress) return;
-    els.playerProgress.textContent = players.length + ' / ' + getTotalNeeded();
+    els.playerProgress.textContent = t('app.player_progress', { current: players.length, total: getTotalNeeded() });
   }
 
   /* ---------- ADD / EDIT PLAYER FORM ---------- */
@@ -1913,6 +2777,11 @@
       var val = els.playerName.value;
       selectedPlayerUid = null;
       els.playerName.classList.remove('add-form__input--linked');
+
+      if (isQuickSessionMode()) {
+        if (mentionDropdown) mentionDropdown.innerHTML = '';
+        return;
+      }
 
       if (val.charAt(0) === '@' && val.length > 1) {
         var query = val.substring(1).toLowerCase();
@@ -1936,6 +2805,22 @@
       e.preventDefault();
 
       var rawName = els.playerName.value.trim();
+      if (isQuickSessionMode()) {
+        if (selectedPlayerUid) {
+          showToast(t('toast.quick_no_mentions'), 'info');
+          return;
+        }
+        if (rawName.charAt(0) === '@') {
+          showToast(t('toast.quick_no_mentions'), 'info');
+          return;
+        }
+      } else {
+        if (rawName.charAt(0) === '@' && !selectedPlayerUid) {
+          showToast(t('toast.official_mention_pick'), 'info');
+          return;
+        }
+      }
+
       var name = rawName.charAt(0) === '@' && !selectedPlayerUid ? rawName.substring(1) : rawName;
       if (selectedPlayerUid) name = rawName;
       var rating = parseInt(els.playerRating.value, 10);
@@ -1943,6 +2828,8 @@
       if (!name) return;
 
       var wasEdit = (editingId !== null);
+      var linkUid = isQuickSessionMode() ? null : (selectedPlayerUid || null);
+      var linkPhoto = isQuickSessionMode() ? null : (selectedPlayerPhoto || null);
 
       if (editingId !== null) {
         var player = players.find(function (p) { return p.id === editingId; });
@@ -1950,18 +2837,19 @@
           player.name = name;
           player.rating = rating;
           player.position = selectedPosition;
-          player.uid = selectedPlayerUid || null;
+          player.uid = linkUid;
+          player.photoURL = linkPhoto;
         }
         editingId = null;
-        els.addForm.querySelector('.add-form__submit').innerHTML = 'Add Player <span class="btn__arrow">+</span>';
+        els.addForm.querySelector('.add-form__submit').innerHTML = escapeHtml(t('app.player.add')) + ' <span class="btn__arrow">+</span>';
       } else {
         players.push({
           id: Date.now() + Math.random(),
           name: name,
           rating: rating,
           position: selectedPosition,
-          uid: selectedPlayerUid || null,
-          photoURL: selectedPlayerPhoto || null
+          uid: linkUid,
+          photoURL: linkPhoto
         });
       }
 
@@ -1969,7 +2857,7 @@
       selectedPlayerPhoto = null;
       saveData();
       renderRoster();
-      showToast(wasEdit ? name + ' updated' : name + ' added', 'success');
+      showToast(wasEdit ? t('toast.player_updated', { name: name }) : t('toast.player_added', { name: name }), 'success');
       els.addForm.reset();
       els.ratingVal.textContent = '5';
       els.playerName.classList.remove('add-form__input--linked');
@@ -1978,63 +2866,57 @@
     });
   }
 
-  /* ---------- @MENTION: SEARCH USERS IN FIRESTORE ---------- */
+  /* ---------- @MENTION: group members only (official sessions) ---------- */
+  function renderMentionDropdownFromMembers(matches, dropdown) {
+    if (!matches.length) {
+      dropdown.innerHTML = '<div class="mention-dropdown__empty">' + escapeHtml(t('app.mentions.empty')) + '</div>';
+      return;
+    }
+    var html = '';
+    matches.forEach(function (m) {
+      var initial = (m.displayName || '?').charAt(0).toUpperCase();
+      var avatarContent = m.photoURL
+        ? '<img src="' + m.photoURL + '" alt="" class="mention-dropdown__avatar-img">'
+        : initial;
+      var uname = m.username ? ('@' + escapeHtml(m.username)) : '';
+      html += '<button type="button" class="mention-dropdown__item" data-uid="' + m.uid + '" data-name="' + escapeHtml(m.displayName || '') + '" data-photo="' + escapeHtml(m.photoURL || '') + '">' +
+        '<span class="mention-dropdown__avatar">' + avatarContent + '</span>' +
+        '<span class="mention-dropdown__info">' +
+          '<span class="mention-dropdown__name">' + escapeHtml(m.displayName || t('app.unknown')) + '</span>' +
+          (uname ? '<span class="mention-dropdown__username">' + uname + '</span>' : '') +
+        '</span>' +
+      '</button>';
+    });
+    dropdown.innerHTML = html;
+    dropdown.querySelectorAll('.mention-dropdown__item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var uid = btn.getAttribute('data-uid');
+        var name = btn.getAttribute('data-name');
+        var photo = btn.getAttribute('data-photo');
+        els.playerName.value = name;
+        selectedPlayerUid = uid;
+        selectedPlayerPhoto = photo || null;
+        els.playerName.classList.add('add-form__input--linked');
+        dropdown.innerHTML = '';
+        els.playerRating.focus();
+      });
+    });
+  }
+
   function searchUsers(query, dropdown) {
     if (typeof db === 'undefined' || !db || !dropdown) return;
+    if (isQuickSessionMode()) return;
 
-    db.collection('users')
-      .orderBy('username')
-      .startAt(query.toLowerCase())
-      .endAt(query.toLowerCase() + '\uf8ff')
-      .limit(6)
-      .get()
-      .then(function (snapshot) {
-        if (snapshot.empty) {
-          dropdown.innerHTML = '<div class="mention-dropdown__empty">No accounts found</div>';
-          return;
-        }
+    var gid = selectedGroupId;
+    if (!gid) {
+      dropdown.innerHTML = '<div class="mention-dropdown__empty">' + escapeHtml(t('app.mentions.select_group_first')) + '</div>';
+      return;
+    }
 
-        var html = '';
-        snapshot.forEach(function (doc) {
-          var u = doc.data();
-          if (doc.id === currentUser.uid) return;
-          var initial = (u.displayName || '?').charAt(0).toUpperCase();
-          var avatarContent = u.photoURL
-            ? '<img src="' + u.photoURL + '" alt="" class="mention-dropdown__avatar-img">'
-            : initial;
-          html += '<button type="button" class="mention-dropdown__item" data-uid="' + doc.id + '" data-name="' + escapeHtml(u.displayName || '') + '" data-photo="' + escapeHtml(u.photoURL || '') + '">' +
-            '<span class="mention-dropdown__avatar">' + avatarContent + '</span>' +
-            '<span class="mention-dropdown__info">' +
-              '<span class="mention-dropdown__name">' + escapeHtml(u.displayName || 'Unknown') + '</span>' +
-              '<span class="mention-dropdown__username">@' + escapeHtml(u.username || '') + '</span>' +
-            '</span>' +
-          '</button>';
-        });
-
-        if (!html) {
-          dropdown.innerHTML = '<div class="mention-dropdown__empty">No accounts found</div>';
-          return;
-        }
-
-        dropdown.innerHTML = html;
-
-        dropdown.querySelectorAll('.mention-dropdown__item').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var uid = btn.getAttribute('data-uid');
-            var name = btn.getAttribute('data-name');
-            var photo = btn.getAttribute('data-photo');
-            els.playerName.value = name;
-            selectedPlayerUid = uid;
-            selectedPlayerPhoto = photo || null;
-            els.playerName.classList.add('add-form__input--linked');
-            dropdown.innerHTML = '';
-            els.playerRating.focus();
-          });
-        });
-      }).catch(function (err) {
-        console.error('@mention search error:', err);
-        dropdown.innerHTML = '';
-      });
+    fetchGroupMembersForMentions(gid).then(function (list) {
+      var matches = filterMembersByMentionQuery(list, query);
+      renderMentionDropdownFromMembers(matches, dropdown);
+    });
   }
 
   /* ---------- RENDER ROSTER ---------- */
@@ -2050,14 +2932,14 @@
     if (players.length === 0) {
       if (els.rosterEmpty) els.rosterEmpty.style.display = '';
       if (els.generateBtn) els.generateBtn.disabled = true;
-      if (els.playerCount) els.playerCount.textContent = '0 players';
+      if (els.playerCount) els.playerCount.textContent = t('app.players.count', { count: 0 });
       updatePlayerProgress();
       return;
     }
 
     if (els.rosterEmpty) els.rosterEmpty.style.display = 'none';
     if (els.generateBtn) els.generateBtn.disabled = players.length < total;
-    if (els.playerCount) els.playerCount.textContent = players.length + (players.length === 1 ? ' player' : ' players');
+    if (els.playerCount) els.playerCount.textContent = t('app.players.count', { count: players.length });
     updatePlayerProgress();
 
     var posLabels = { HYB: 'HYB', ATK: 'ATK', DEF: 'DEF', GK: 'GK' };
@@ -2120,17 +3002,17 @@
       b.classList.toggle('pos-picker__btn--active', b.getAttribute('data-pos') === selectedPosition);
     });
 
-    els.addForm.querySelector('.add-form__submit').innerHTML = 'Update Player <span class="btn__arrow">\u2713</span>';
+    els.addForm.querySelector('.add-form__submit').innerHTML = escapeHtml(t('app.player.update')) + ' <span class="btn__arrow">\u2713</span>';
     els.playerName.focus();
   }
 
   function deletePlayer(id) {
     var player = players.find(function (p) { return p.id === id; });
-    var pName = player ? player.name : 'Player';
+    var pName = player ? player.name : t('app.user.player');
     players = players.filter(function (p) { return p.id !== id; });
     saveData();
     renderRoster();
-    showToast(pName + ' removed', 'info');
+    showToast(t('toast.player_removed', { name: pName }), 'info');
   }
 
   /* ---------- TEAM GENERATION (Position-Aware Balanced Draft) ---------- */
@@ -2143,21 +3025,132 @@
     });
   }
 
-  /* ---- Internal scoring ----
-     UI level 1–10 maps linearly to -1 … +5 for sharper differentiation.
-     Position weights reflect team value: HYB > DEF > ATK. GK neutral (placed separately).
-     effectiveScore = internalSkill + positionWeight
-     Teams are balanced on effectiveScore; UI still shows 1–10. */
-
-  var POS_WEIGHT = { HYB: 0.5, DEF: 0.3, ATK: 0, GK: 0 };
+  /* ---- Balancing: skill-first utility, then position spread ----
+     UI 1–10 → internal skill ~ -1 … +5. Field roles add a small bump: HYB > DEF > ATK.
+     GKs use skill only and are placed first, spread across teams by utility spread + GK count.
+     Remaining players go in skill order; each pick minimizes spread of team utility, then
+     stacks of the same position, then roster size. A swap pass tightens totals + position mix. */
 
   function toInternal(uiRating) {
-    /* 1 → -1, 10 → +5  ⇒  internal = (uiRating - 1) * (6/9) - 1 */
     return (uiRating - 1) * (6 / 9) - 1;
   }
 
-  function effectiveScore(player) {
-    return toInternal(player.rating) + (POS_WEIGHT[player.position] || 0);
+  var FIELD_POS_UTILITY = { HYB: 0.58, DEF: 0.30, ATK: 0.14 };
+
+  function utilityScore(player) {
+    var base = toInternal(player.rating);
+    if (player.position === 'GK') return base;
+    return base + (FIELD_POS_UTILITY[player.position] != null ? FIELD_POS_UTILITY[player.position] : 0.4);
+  }
+
+  function recomputeTeamTotals(teams) {
+    teams.forEach(function (team) {
+      team.effTotal = 0;
+      team.uiTotal = 0;
+      team.players.forEach(function (p) {
+        team.effTotal += utilityScore(p);
+        team.uiTotal += p.rating;
+      });
+    });
+  }
+
+  function spreadOfTeamEff(teams) {
+    if (!teams.length) return 0;
+    var minV = Infinity;
+    var maxV = -Infinity;
+    teams.forEach(function (t) {
+      if (t.effTotal < minV) minV = t.effTotal;
+      if (t.effTotal > maxV) maxV = t.effTotal;
+    });
+    return maxV - minV;
+  }
+
+  function countPosOnTeam(team, pos) {
+    var n = 0;
+    team.players.forEach(function (p) {
+      if (p.position === pos) n++;
+    });
+    return n;
+  }
+
+  function simulatedSpreadAfterAdd(teams, trialIdx, addU) {
+    var minV = Infinity;
+    var maxV = -Infinity;
+    for (var j = 0; j < teams.length; j++) {
+      var v = teams[j].effTotal + (j === trialIdx ? addU : 0);
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+    }
+    return maxV - minV;
+  }
+
+  function cmpKey(a, b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] < b[i]) return -1;
+      if (a[i] > b[i]) return 1;
+    }
+    return 0;
+  }
+
+  function pickBestTeamIndex(teams, player, ppt, nTeams, keyFn) {
+    var u = utilityScore(player);
+    var bestIdx = null;
+    var bestKey = null;
+    for (var i = 0; i < nTeams; i++) {
+      if (teams[i].players.length >= ppt) continue;
+      var key = keyFn(teams, i, u, player);
+      if (bestKey === null || cmpKey(key, bestKey) < 0) {
+        bestKey = key;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function positionClusterPenalty(teams) {
+    var positions = ['GK', 'HYB', 'DEF', 'ATK'];
+    var penalty = 0;
+    positions.forEach(function (pos) {
+      var counts = teams.map(function (t) { return countPosOnTeam(t, pos); });
+      var maxC = Math.max.apply(null, counts);
+      var minC = Math.min.apply(null, counts);
+      penalty += (maxC - minC) * (pos === 'GK' ? 1.15 : 1);
+    });
+    return penalty;
+  }
+
+  function refineTeamsBySwaps(teams, nTeams) {
+    recomputeTeamTotals(teams);
+    function combinedPenalty() {
+      return spreadOfTeamEff(teams) + 0.14 * positionClusterPenalty(teams);
+    }
+    for (var round = 0; round < 14; round++) {
+      var improved = false;
+      var cur = combinedPenalty();
+      for (var a = 0; a < nTeams; a++) {
+        for (var b = a + 1; b < nTeams; b++) {
+          for (var i = 0; i < teams[a].players.length; i++) {
+            for (var j = 0; j < teams[b].players.length; j++) {
+              var p1 = teams[a].players[i];
+              var p2 = teams[b].players[j];
+              teams[a].players[i] = p2;
+              teams[b].players[j] = p1;
+              recomputeTeamTotals(teams);
+              var next = combinedPenalty();
+              if (next < cur - 1e-9) {
+                cur = next;
+                improved = true;
+              } else {
+                teams[a].players[i] = p1;
+                teams[b].players[j] = p2;
+                recomputeTeamTotals(teams);
+              }
+            }
+          }
+        }
+      }
+      if (!improved) break;
+    }
   }
 
   function generateTeams() {
@@ -2183,88 +3176,79 @@
 
       var pool = players.slice();
 
-      /* Initialize empty teams */
       var teams = [];
       for (var t = 0; t < nTeams; t++) {
         teams.push({ players: [], effTotal: 0, uiTotal: 0 });
       }
 
-      /* --- Phase 1: Distribute goalkeepers evenly --- */
       var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
       var others = pool.filter(function (p) { return p.position !== 'GK'; });
 
-      goalkeepers.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
+      goalkeepers.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
 
       goalkeepers.forEach(function (gk) {
-        var bestTeam = null;
-        var bestGkCount = Infinity;
-        var bestEff = Infinity;
-
-        for (var i = 0; i < teams.length; i++) {
-          if (teams[i].players.length >= ppt) continue;
-          var gkCount = teams[i].players.filter(function (p) { return p.position === 'GK'; }).length;
-          if (gkCount < bestGkCount || (gkCount === bestGkCount && teams[i].effTotal < bestEff)) {
-            bestTeam = i;
-            bestGkCount = gkCount;
-            bestEff = teams[i].effTotal;
-          }
-        }
-
-        if (bestTeam !== null) {
-          teams[bestTeam].players.push(gk);
-          teams[bestTeam].effTotal += effectiveScore(gk);
-          teams[bestTeam].uiTotal += gk.rating;
+        var u = utilityScore(gk);
+        var idx = pickBestTeamIndex(teams, gk, ppt, nTeams, function (T, i, addU) {
+          var sp = simulatedSpreadAfterAdd(T, i, addU);
+          var gkc = countPosOnTeam(T[i], 'GK');
+          var sz = T[i].players.length;
+          var ef = T[i].effTotal;
+          return [sp, gkc, sz, ef];
+        });
+        if (idx !== null) {
+          teams[idx].players.push(gk);
+          teams[idx].effTotal += u;
+          teams[idx].uiTotal += gk.rating;
         }
       });
 
-      /* --- Phase 2: Balanced draft for remaining players --- */
-      others.sort(function (a, b) { return effectiveScore(b) - effectiveScore(a); });
+      others.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
 
       others.forEach(function (player) {
-        var bestTeam = null;
-        var bestCount = Infinity;
-        var bestEff = Infinity;
-
-        for (var i = 0; i < teams.length; i++) {
-          if (teams[i].players.length >= ppt) continue;
-          var count = teams[i].players.length;
-          if (count < bestCount || (count === bestCount && teams[i].effTotal < bestEff)) {
-            bestTeam = i;
-            bestCount = count;
-            bestEff = teams[i].effTotal;
-          }
-        }
-
-        if (bestTeam !== null) {
-          teams[bestTeam].players.push(player);
-          teams[bestTeam].effTotal += effectiveScore(player);
-          teams[bestTeam].uiTotal += player.rating;
+        var idx = pickBestTeamIndex(teams, player, ppt, nTeams, function (T, i, addU, pl) {
+          var sp = simulatedSpreadAfterAdd(T, i, addU);
+          var pc = countPosOnTeam(T[i], pl.position);
+          var sz = T[i].players.length;
+          var ef = T[i].effTotal;
+          return [sp, pc, sz, ef];
+        });
+        if (idx !== null) {
+          teams[idx].players.push(player);
+          teams[idx].effTotal += u;
+          teams[idx].uiTotal += player.rating;
         }
       });
 
-      /* --- Phase 3: Render --- */
+      recomputeTeamTotals(teams);
+      refineTeamsBySwaps(teams, nTeams);
+      recomputeTeamTotals(teams);
+
       renderResults(teams);
 
-      /* Track games */
-      gamesGenerated++;
+      /* Track games (device tally only — quick games don't count) */
+      if (!isQuickSessionMode()) {
+        gamesGenerated++;
+      }
       saveData();
 
       /* Store pending — don't go live until user confirms */
       pendingSession = { teams: teams, nTeams: nTeams, ppt: ppt };
       var confirmBtn = document.getElementById('resultsConfirm');
       if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = 'Confirm & Go Live <span class="btn__arrow">\u2192</span>';
+        confirmBtn.disabled = !isOfficialModeReady();
+        confirmBtn.innerHTML = escapeHtml(t('app.session.confirm_go_live')) + ' <span class="btn__arrow">\u2192</span>';
         confirmBtn.classList.remove('btn--confirmed');
       }
 
-      showToast('Teams balanced! Review and confirm to go live.', 'success');
+      showToast(t('toast.teams_balanced'), 'success');
+      updateConfirmButtonState();
     }, 700);
   }
 
   /* ---------- SAVE SESSION TO FIRESTORE ---------- */
-  function saveSessionToFirestore(teams, nTeams, ppt) {
+  function saveSessionToFirestore(teams, nTeams, ppt, group) {
     if (typeof db === 'undefined' || !db || !currentUser) return;
+    if (!group || !group.id) return;
 
     var venue = els.sessionVenue ? els.sessionVenue.value.trim() : '';
     var date = els.sessionDate ? els.sessionDate.value : '';
@@ -2306,6 +3290,8 @@
     });
 
     db.collection('sessions').add({
+      groupId: group.id,
+      groupName: group.name || '',
       creatorId: currentUser.uid,
       creatorName: currentUser.displayName || 'Player',
       venue: venue,
@@ -2393,10 +3379,10 @@
 
     els.createGroupBtn.addEventListener('click', function () {
       showModal({
-        title: 'New Group',
+        title: t('modal.new_group.title'),
         inputMode: true,
-        placeholder: 'e.g. Tuesday Night Crew',
-        confirmText: 'Create',
+        placeholder: t('modal.new_group.placeholder'),
+        confirmText: t('modal.action.create'),
         onConfirm: function (val) {
           if (!val || !val.trim()) return;
           groups.push({
@@ -2406,7 +3392,7 @@
           });
           saveData();
           renderGroups();
-          showToast(val.trim() + ' created', 'success');
+          showToast(t('toast.group_created_named', { name: val.trim() }), 'success');
         }
       });
     });
@@ -2439,11 +3425,11 @@
           '<div class="group-item__badge">' + initial + '</div>' +
           '<div>' +
             '<span class="group-item__name">' + escapeHtml(group.name) + '</span><br>' +
-            '<span class="group-item__count">' + group.players.length + ' players</span>' +
+            '<span class="group-item__count">' + escapeHtml(t('app.players.count', { count: group.players.length })) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="roster__actions">' +
-          '<button class="roster__btn roster__btn--delete" data-group-id="' + group.id + '" title="Delete">×</button>' +
+          '<button class="roster__btn roster__btn--delete" data-group-id="' + group.id + '" title="' + escapeHtml(t('app.actions.delete')) + '">×</button>' +
         '</div>';
 
       els.groupsList.appendChild(item);
@@ -2454,11 +3440,11 @@
       btn.addEventListener('click', function () {
         var id = parseFloat(btn.getAttribute('data-group-id'));
         var group = groups.find(function (g) { return g.id === id; });
-        var gName = group ? group.name : 'Group';
+        var gName = group ? group.name : t('app.group');
         groups = groups.filter(function (g) { return g.id !== id; });
         saveData();
         renderGroups();
-        showToast(gName + ' removed', 'info');
+        showToast(t('toast.group_removed_named', { name: gName }), 'info');
       });
     });
   }
@@ -2468,10 +3454,10 @@
     if (!els.clearDataBtn) return;
     els.clearDataBtn.addEventListener('click', function () {
       showModal({
-        title: 'Clear All Data',
-        message: 'This will remove all saved players, groups, and history. This cannot be undone.',
+        title: t('modal.clear_data.title'),
+        message: t('modal.clear_data.body'),
         danger: true,
-        confirmText: 'Clear Everything',
+        confirmText: t('modal.action.clear_everything'),
         onConfirm: function () {
           players = [];
           groups = [];
@@ -2483,7 +3469,7 @@
           renderRoster();
           renderGroups();
           updateStats();
-          showToast('All data cleared', 'danger');
+          showToast(t('toast.all_data_cleared'), 'danger');
         }
       });
     });

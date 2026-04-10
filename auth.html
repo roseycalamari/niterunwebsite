@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="auth.css">
+  <script src="i18n.js"></script>
 </head>
 <body>
 
@@ -21,10 +22,16 @@
       <div class="auth-brand">
         <div class="auth-brand__inner">
           <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="auth-brand__logo">
-          <h2 class="auth-brand__title" id="brandTitle">Welcome Back</h2>
-          <p class="auth-brand__sub" id="brandSub">Sign in to draft smarter.</p>
+          <h2 class="auth-brand__title" id="brandTitle" data-i18n="auth.brand.title_login">Welcome Back</h2>
+          <p class="auth-brand__sub" id="brandSub" data-i18n="auth.brand.sub_login">Sign in to draft smarter.</p>
         </div>
-        <a href="index.html" class="auth-brand__back">← Back to site</a>
+        <div class="auth-brand__inner auth-brand__lang">
+          <div class="lang-switch lang-switch--auth" data-lang-switcher-group role="group" data-i18n-aria-label="lang.aria.switcher">
+            <button type="button" class="lang-switch__btn" data-lang="en" aria-pressed="true">EN</button>
+            <button type="button" class="lang-switch__btn" data-lang="pt-PT" aria-pressed="false">PT</button>
+          </div>
+        </div>
+        <a href="index.html" class="auth-brand__back"><span data-i18n="auth.back_to_site">← Back to site</span></a>
       </div>
 
       <!-- RIGHT PANEL — Form -->
@@ -32,8 +39,8 @@
 
         <!-- Tabs -->
         <div class="auth-tabs">
-          <button class="auth-tab auth-tab--active" id="tabLogin">Log In</button>
-          <button class="auth-tab" id="tabRegister">Create Account</button>
+          <button class="auth-tab auth-tab--active" id="tabLogin" data-i18n="auth.tab.login">Log In</button>
+          <button class="auth-tab" id="tabRegister" data-i18n="auth.tab.register">Create Account</button>
           <div class="auth-tab__indicator" id="tabIndicator"></div>
         </div>
 
@@ -41,44 +48,44 @@
         <div class="auth-form-wrap" id="authFormWrap">
           <form id="authForm" class="auth-form" autocomplete="on" novalidate>
             <div class="auth-field auth-field--name" id="nameGroup">
-              <label class="wiz-form__label" for="authName">Display Name</label>
-              <input class="wiz-form__input" type="text" id="authName" autocomplete="name" placeholder="e.g. Marcus">
+              <label class="wiz-form__label" for="authName" data-i18n="auth.label.display_name">Display Name</label>
+              <input class="wiz-form__input" type="text" id="authName" autocomplete="name" data-i18n-placeholder="auth.placeholder.display_name" placeholder="e.g. Marcus">
             </div>
             <div class="auth-field auth-field--name" id="usernameGroup">
-              <label class="wiz-form__label" for="authUsername">Username <span class="auth-field__hint">lowercase, no spaces</span></label>
+              <label class="wiz-form__label" for="authUsername"><span data-i18n="auth.label.username">Username</span> <span class="auth-field__hint" data-i18n="auth.hint.username">lowercase, no spaces</span></label>
               <div class="auth-username-wrap">
                 <span class="auth-username-at">@</span>
-                <input class="wiz-form__input auth-username-input" type="text" id="authUsername" autocomplete="off" placeholder="e.g. marcus23">
+                <input class="wiz-form__input auth-username-input" type="text" id="authUsername" autocomplete="off" data-i18n-placeholder="auth.placeholder.username" placeholder="e.g. marcus23">
               </div>
               <p class="auth-username-status" id="usernameStatus"></p>
             </div>
             <div class="auth-field">
-              <label class="wiz-form__label" for="authEmail">Email</label>
-              <input class="wiz-form__input" type="email" id="authEmail" autocomplete="email" required placeholder="you@example.com">
+              <label class="wiz-form__label" for="authEmail" data-i18n="auth.label.email">Email</label>
+              <input class="wiz-form__input" type="email" id="authEmail" autocomplete="email" required data-i18n-placeholder="auth.placeholder.email" placeholder="you@example.com">
             </div>
             <div class="auth-field">
-              <label class="wiz-form__label" for="authPassword">Password</label>
+              <label class="wiz-form__label" for="authPassword" data-i18n="auth.label.password">Password</label>
               <div class="auth-pw-wrap">
-                <input class="wiz-form__input auth-pw-input" type="password" id="authPassword" autocomplete="current-password" required placeholder="Min. 8 characters">
-                <button type="button" class="auth-pw-toggle" id="pwToggle" aria-label="Show password">
+                <input class="wiz-form__input auth-pw-input" type="password" id="authPassword" autocomplete="current-password" required data-i18n-placeholder="auth.placeholder.password_login" placeholder="Min. 8 characters">
+                <button type="button" class="auth-pw-toggle" id="pwToggle" data-i18n-title="auth.pw_toggle" aria-label="Show password">
                   <svg class="auth-pw-icon auth-pw-icon--off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   <svg class="auth-pw-icon auth-pw-icon--on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
               </div>
               <div class="auth-pw-reqs" id="pwReqs">
-                <span class="auth-pw-req" id="pwReqLength">8+ characters</span>
-                <span class="auth-pw-req" id="pwReqUpper">1 uppercase</span>
-                <span class="auth-pw-req" id="pwReqNumber">1 number</span>
+                <span class="auth-pw-req" id="pwReqLength" data-i18n="auth.pw_req.length">8+ characters</span>
+                <span class="auth-pw-req" id="pwReqUpper" data-i18n="auth.pw_req.upper">1 uppercase</span>
+                <span class="auth-pw-req" id="pwReqNumber" data-i18n="auth.pw_req.number">1 number</span>
               </div>
             </div>
 
             <p class="auth-error" id="authError"></p>
 
             <button type="submit" class="btn btn--primary btn--large auth-submit" id="authSubmit">
-              Log In <span class="btn__arrow">→</span>
+              <span data-i18n="auth.submit.login">Log In</span> <span class="btn__arrow">→</span>
             </button>
 
-            <button type="button" class="auth-forgot" id="forgotPassword">Forgot password?</button>
+            <button type="button" class="auth-forgot" id="forgotPassword" data-i18n="auth.forgot">Forgot password?</button>
           </form>
         </div>
 
@@ -90,15 +97,15 @@
           <div class="auth-verify__icon">
             <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
           </div>
-          <h2 class="auth-verify__title">CHECK YOUR INBOX</h2>
-          <p class="auth-verify__text">We sent a verification link to:</p>
+          <h2 class="auth-verify__title" data-i18n="auth.verify.title">CHECK YOUR INBOX</h2>
+          <p class="auth-verify__text" data-i18n="auth.verify.sent_to">We sent a verification link to:</p>
           <p class="auth-verify__email" id="verifyEmail">your@email.com</p>
-          <p class="auth-verify__text">Click the link in the email to verify your account, then come back and log in.</p>
+          <p class="auth-verify__text" data-i18n="auth.verify.instructions">Click the link in the email to verify your account, then come back and log in.</p>
           <button class="btn btn--primary btn--large auth-submit" id="verifyResend" style="width:100%;justify-content:center;">
-            Resend Email <span class="btn__arrow">→</span>
+            <span data-i18n="auth.verify.resend">Resend Email</span> <span class="btn__arrow">→</span>
           </button>
           <p class="auth-verify__status" id="verifyStatus"></p>
-          <button type="button" class="auth-forgot" id="verifyBack">← Back to login</button>
+          <button type="button" class="auth-forgot" id="verifyBack" data-i18n="auth.verify.back">← Back to login</button>
         </div>
       </div>
 

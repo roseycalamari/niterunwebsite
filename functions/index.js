@@ -97,6 +97,14 @@ exports.verifyEmail = onRequest(
 
       const auth = getAuth();
       await auth.updateUser(data.uid, { emailVerified: true });
+
+      // Keep Firestore user profile email in sync (supports email changes too).
+      if (data.email) {
+        await db.collection("users").doc(data.uid).set(
+          { email: data.email },
+          { merge: true }
+        );
+      }
       await docRef.update({ used: true });
 
       return res.status(200).send(verifyPage("Email Verified!", "Your email has been verified successfully. You can now log in to NiteRun.", true));

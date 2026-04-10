@@ -7,6 +7,13 @@
 (function () {
   'use strict';
 
+  function t(key, vars) {
+    try {
+      if (window.NiteRunI18n && typeof window.NiteRunI18n.t === 'function') return window.NiteRunI18n.t(key, vars);
+    } catch (e) {}
+    return key;
+  }
+
   /* ---------- DOM REFS ---------- */
   var tabLogin = document.getElementById('tabLogin');
   var tabRegister = document.getElementById('tabRegister');
@@ -82,15 +89,15 @@
       usernameGroup.classList.remove('auth-field--visible');
 
       /* Update button */
-      submitBtn.innerHTML = 'Log In <span class="btn__arrow">\u2192</span>';
+      submitBtn.innerHTML = t('auth.submit.login') + ' <span class="btn__arrow">\u2192</span>';
       passwordInput.autocomplete = 'current-password';
-      passwordInput.placeholder = 'Your password';
+      passwordInput.placeholder = t('auth.placeholder.password_login');
       if (forgotBtn) forgotBtn.style.display = '';
       if (pwReqs) pwReqs.classList.remove('auth-pw-reqs--visible');
 
       /* Update branding text */
-      if (brandTitle) brandTitle.textContent = 'Welcome Back';
-      if (brandSub) brandSub.textContent = 'Sign in to draft smarter.';
+      if (brandTitle) brandTitle.textContent = t('auth.brand.title_login');
+      if (brandSub) brandSub.textContent = t('auth.brand.sub_login');
     } else {
       /* Tab indicator slides right */
       tabIndicator.classList.add('auth-tab__indicator--right');
@@ -102,16 +109,16 @@
       usernameGroup.classList.add('auth-field--visible');
 
       /* Update button */
-      submitBtn.innerHTML = 'Create Account <span class="btn__arrow">\u2192</span>';
+      submitBtn.innerHTML = t('auth.submit.register') + ' <span class="btn__arrow">\u2192</span>';
       passwordInput.autocomplete = 'new-password';
-      passwordInput.placeholder = 'Min. 8 characters';
+      passwordInput.placeholder = t('auth.placeholder.password_register');
       if (forgotBtn) forgotBtn.style.display = 'none';
       if (pwReqs) pwReqs.classList.add('auth-pw-reqs--visible');
       validatePassword(passwordInput.value);
 
       /* Update branding text */
-      if (brandTitle) brandTitle.textContent = 'Join Nite-Run';
-      if (brandSub) brandSub.textContent = 'Create an account and start playing.';
+      if (brandTitle) brandTitle.textContent = t('auth.brand.title_register');
+      if (brandSub) brandSub.textContent = t('auth.brand.sub_register');
 
       /* Focus name field after animation */
       setTimeout(function () { nameInput.focus(); }, 360);
@@ -133,11 +140,11 @@
       clearTimeout(usernameCheckTimer);
 
       if (clean.length < 3) {
-        setUsernameStatus(clean.length > 0 ? 'At least 3 characters' : '', '');
+        setUsernameStatus(clean.length > 0 ? t('auth.username.min_chars') : '', '');
         return;
       }
 
-      setUsernameStatus('Checking...', 'checking');
+      setUsernameStatus(t('auth.username.checking'), 'checking');
       usernameCheckTimer = setTimeout(function () {
         checkUsernameAvailability(clean);
       }, 400);
@@ -154,14 +161,14 @@
       .then(function (snapshot) {
         if (snapshot.empty) {
           usernameAvailable = true;
-          setUsernameStatus('@' + username + ' is available', 'available');
+          setUsernameStatus(t('auth.username.available', { username: username }), 'available');
         } else {
           usernameAvailable = false;
-          setUsernameStatus('@' + username + ' is taken', 'taken');
+          setUsernameStatus(t('auth.username.taken', { username: username }), 'taken');
         }
       })
       .catch(function () {
-        setUsernameStatus('Could not check', '');
+        setUsernameStatus(t('auth.username.could_not_check'), '');
       });
   }
 
@@ -205,13 +212,13 @@
     var password = passwordInput.value;
 
     if (!email || !password) {
-      errorEl.textContent = 'Please fill in all fields.';
+      errorEl.textContent = t('auth.error.fill_all');
       return;
     }
 
     var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     if (!emailRegex.test(email)) {
-      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.textContent = t('auth.error.valid_email');
       return;
     }
 
@@ -224,22 +231,22 @@
       var username = usernameInput ? usernameInput.value.trim() : '';
 
       if (!name) {
-        errorEl.textContent = 'Please enter your name.';
+        errorEl.textContent = t('auth.error.name_required');
         submitBtn.disabled = false;
         return;
       }
       if (username.length < 3) {
-        errorEl.textContent = 'Username must be at least 3 characters.';
+        errorEl.textContent = t('auth.error.username_len');
         submitBtn.disabled = false;
         return;
       }
       if (!usernameAvailable) {
-        errorEl.textContent = 'That username is not available.';
+        errorEl.textContent = t('auth.error.username_unavailable');
         submitBtn.disabled = false;
         return;
       }
       if (!passwordValid) {
-        errorEl.textContent = 'Password needs 8+ characters, 1 uppercase letter, and 1 number.';
+        errorEl.textContent = t('auth.error.password_rules');
         submitBtn.disabled = false;
         return;
       }
@@ -301,26 +308,26 @@
 
   /* ---------- ERROR MESSAGES ---------- */
   function showError(err) {
-    var msg = 'Something went wrong. Please try again.';
+    var msg = t('auth.error.generic');
 
     if (err && err.code) {
       switch (err.code) {
         case 'auth/email-already-in-use':
-          msg = 'That email is already registered. Try logging in.';
+          msg = t('auth.error.email_in_use');
           break;
         case 'auth/weak-password':
-          msg = 'Password must be at least 6 characters.';
+          msg = t('auth.error.weak_password');
           break;
         case 'auth/invalid-email':
-          msg = 'Please enter a valid email address.';
+          msg = t('auth.error.valid_email');
           break;
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          msg = 'Incorrect email or password.';
+          msg = t('auth.error.bad_credentials');
           break;
         case 'auth/too-many-requests':
-          msg = 'Too many attempts. Please wait a moment.';
+          msg = t('auth.error.too_many');
           break;
       }
     }
@@ -333,22 +340,22 @@
     forgotBtn.addEventListener('click', function () {
       var email = emailInput ? emailInput.value.trim() : '';
       if (!email) {
-        errorEl.textContent = 'Enter your email above, then click Forgot password.';
+        errorEl.textContent = t('auth.reset.prompt_enter_email');
         return;
       }
       if (typeof auth === 'undefined' || !auth) return;
 
       auth.sendPasswordResetEmail(email).then(function () {
         errorEl.style.color = '#22c55e';
-        errorEl.textContent = 'Reset email sent to ' + email + '!';
+        errorEl.textContent = t('auth.reset.sent', { email: email });
         setTimeout(function () { errorEl.style.color = ''; }, 4000);
       }).catch(function (err) {
         if (err.code === 'auth/user-not-found') {
-          errorEl.textContent = 'No account found with that email.';
+          errorEl.textContent = t('auth.error.no_account');
         } else if (err.code === 'auth/invalid-email') {
-          errorEl.textContent = 'Please enter a valid email address.';
+          errorEl.textContent = t('auth.error.valid_email');
         } else {
-          errorEl.textContent = 'Could not send reset email. Try again.';
+          errorEl.textContent = t('auth.reset.failed');
         }
       });
     });
@@ -367,8 +374,8 @@
     if (formPanel) formPanel.style.display = 'none';
     if (verifyPanel) verifyPanel.style.display = 'flex';
     if (verifyEmailEl) verifyEmailEl.textContent = email;
-    if (brandTitle) brandTitle.textContent = 'Almost There';
-    if (brandSub) brandSub.textContent = 'Verify your email to continue.';
+    if (brandTitle) brandTitle.textContent = t('auth.brand.title_verify');
+    if (brandSub) brandSub.textContent = t('auth.brand.sub_verify');
   }
 
   function hideVerifyScreen() {
@@ -383,20 +390,20 @@
     verifyResendBtn.addEventListener('click', function () {
       var user = auth.currentUser;
       if (!user) {
-        setVerifyStatus('Please log in first, then we can resend.', 'error');
+        setVerifyStatus(t('auth.verify.error_login_first'), 'error');
         return;
       }
       verifyResendBtn.disabled = true;
       var sendVerification = functions.httpsCallable('sendVerification');
       sendVerification().then(function (result) {
         if (result.data && result.data.already) {
-          setVerifyStatus('Your email is already verified! Go ahead and log in.', 'success');
+          setVerifyStatus(t('auth.verify.already_verified'), 'success');
         } else {
-          setVerifyStatus('Verification email sent!', 'success');
+          setVerifyStatus(t('auth.verify.sent'), 'success');
         }
         setTimeout(function () { verifyResendBtn.disabled = false; }, 10000);
       }).catch(function () {
-        setVerifyStatus('Could not resend. Try again shortly.', 'error');
+        setVerifyStatus(t('auth.verify.resend_failed'), 'error');
         verifyResendBtn.disabled = false;
       });
     });

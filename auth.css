@@ -44,6 +44,15 @@
   gap: 0.6rem;
 }
 
+.auth-brand__lang {
+  margin-top: 12px;
+}
+
+/* EN/PT switcher on blue brand panel (uses .lang-switch from app.css) */
+.auth-brand .lang-switch--auth {
+  align-self: flex-start;
+}
+
 .auth-brand__logo {
   height: 44px;
   width: auto;
@@ -333,7 +342,7 @@ body.dark .auth-card {
 }
 
 body.dark .auth-brand {
-  background-color: #1e40af;
+  background-color: var(--blue);
   border-right-color: #2a2a32;
 }
 
@@ -350,7 +359,7 @@ body.dark .auth-tab--active {
 }
 
 body.dark .auth-tab__indicator {
-  background-color: #2563eb;
+  background-color: var(--blue);
 }
 
 body.dark .auth-brand__back {

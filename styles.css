@@ -107,6 +107,81 @@ h1, h2, h3, h4 {
   color: var(--black);
 }
 
+.how__sub {
+  max-width: 62ch;
+  margin: var(--space-sm) auto 0;
+  font-size: clamp(1.05rem, 1.2vw, 1.25rem);
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+/* ---- HOW TO USE (simple) ---- */
+.use-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.use-card {
+  border: 2px solid var(--black);
+  background: var(--cream);
+  padding: 1.6rem 1.6rem;
+  box-shadow: 5px 5px 0 var(--black);
+}
+
+.use-card--filled {
+  background: var(--blue);
+  color: var(--cream);
+}
+
+.use-card__tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.use-card__title {
+  margin-top: 0.5rem;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  line-height: 1.1;
+}
+
+.use-card__desc {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  opacity: 0.85;
+}
+
+.use-card__list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.55rem;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.use-card__list li {
+  position: relative;
+  padding-left: 1.1rem;
+}
+
+.use-card__list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+@media (max-width: 900px) {
+  .use-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---- SCRIBBLE ACCENT (shared) ---- */
 .has-scribble {
   position: relative;
@@ -582,6 +657,10 @@ h1, h2, h3, h4 {
 
 .how__header {
   margin-bottom: clamp(3rem, 7vw, 6rem);
+  text-align: center;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .how .section-eyebrow {
@@ -593,6 +672,12 @@ h1, h2, h3, h4 {
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   border: 2px solid var(--black);
+}
+
+.how__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-md);
 }
 
 .step {
@@ -1085,6 +1170,82 @@ h1, h2, h3, h4 {
   font-size: 1.3rem;
   font-weight: 700;
   line-height: 1;
+}
+
+/* ---- LANGUAGE FAB (EN / PT segment switch) ---- */
+.lang-fab {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 91;
+}
+
+.lang-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background-color: var(--cream);
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 var(--black);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+/* Match floating back-to-top control (52×52) */
+.lang-fab .lang-switch {
+  height: 52px;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.lang-fab:hover .lang-switch {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--black);
+}
+
+.lang-fab:active .lang-switch {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--black);
+}
+
+.lang-switch__btn {
+  margin: 0;
+  min-width: 2.65rem;
+  padding: 0.5em 0.75em;
+  border: none;
+  background: transparent;
+  font-family: var(--ff-body);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--black);
+  opacity: 0.4;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.lang-fab .lang-switch__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.65em;
+  min-width: 2.5rem;
+  align-self: stretch;
+}
+
+.lang-switch__btn:hover:not(.lang-switch__btn--active) {
+  opacity: 0.65;
+}
+
+.lang-switch__btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.lang-switch__btn--active {
+  background-color: var(--blue);
+  color: var(--cream);
+  opacity: 1;
 }
 
 /* ---- SELECTION ---- */

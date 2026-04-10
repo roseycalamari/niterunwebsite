@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="app.css">
+  <script src="i18n.js"></script>
 </head>
 <body>
 
@@ -22,22 +23,22 @@
       <nav class="sidebar__nav">
         <button class="sidebar__link sidebar__link--active" data-view="dashboard">
           <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          <span>Dashboard</span>
+          <span data-i18n="app.nav.dashboard">Dashboard</span>
         </button>
         <button class="sidebar__link" data-view="profile">
           <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Profile</span>
+          <span data-i18n="app.nav.profile">Profile</span>
         </button>
         <button class="sidebar__link" data-view="settings">
           <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Settings</span>
+          <span data-i18n="app.nav.settings">Settings</span>
         </button>
       </nav>
     </div>
     <div class="sidebar__bottom">
       <a href="index.html" class="sidebar__link sidebar__link--back">
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        <span>Back to Site</span>
+        <span data-i18n="app.nav.back_to_site">Back to Site</span>
       </a>
     </div>
   </aside>
@@ -46,15 +47,15 @@
   <nav class="tabbar" id="tabbar">
     <button class="tabbar__btn tabbar__btn--active" data-view="dashboard">
       <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      <span>Dashboard</span>
+      <span data-i18n="app.nav.dashboard">Dashboard</span>
     </button>
     <button class="tabbar__btn" data-view="profile">
       <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
+      <span data-i18n="app.nav.profile">Profile</span>
     </button>
     <button class="tabbar__btn" data-view="settings">
       <svg class="tabbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>Settings</span>
+      <span data-i18n="app.nav.settings">Settings</span>
     </button>
   </nav>
 
@@ -66,32 +67,37 @@
       <button class="topbar__logo" data-view="dashboard">
         <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="topbar__logo-img">
       </button>
-      <h1 class="topbar__title" id="pageTitle">Dashboard</h1>
+      <h1 class="topbar__title" id="pageTitle" data-i18n="app.nav.dashboard">Dashboard</h1>
       <div class="topbar__right">
-        <button class="topbar__search" id="searchToggle" aria-label="Search">
+        <button class="topbar__search" id="searchToggle" aria-label="Search" data-i18n-aria-label="app.aria.search">
           <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
         <div class="notif-wrap">
-          <button class="topbar__notif" id="notifToggle" aria-label="Notifications">
+          <button class="topbar__notif" id="notifToggle" aria-label="Notifications" data-i18n-aria-label="app.notifications.title">
             <svg class="topbar__notif-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="notif-badge" id="notifBadge"></span>
           </button>
           <div class="notif-dropdown" id="notifDropdown">
             <div class="notif-dropdown__header">
-              <span class="notif-dropdown__title">Notifications</span>
-              <button class="notif-dropdown__clear" id="notifClearAll">Clear all</button>
+              <span class="notif-dropdown__title" data-i18n="app.notifications.title">Notifications</span>
+              <button class="notif-dropdown__clear" id="notifClearAll" data-i18n="app.notifications.clear_all">Clear all</button>
             </div>
             <div class="notif-dropdown__list" id="notifList">
-              <p class="notif-dropdown__empty">No notifications</p>
+              <p class="notif-dropdown__empty" data-i18n="app.notifications.empty">No notifications</p>
             </div>
           </div>
         </div>
-        <div class="topbar__user">
+        <div class="topbar__user" id="topbarUserWrap">
           <div class="topbar__user-info">
-            <span class="topbar__name">Player</span>
+            <span class="topbar__name" data-i18n="app.user.player">Player</span>
             <span class="topbar__username" id="topbarUsername"></span>
           </div>
-          <div class="topbar__avatar">P</div>
+          <button class="topbar__avatar" id="topbarUserBtn" type="button" aria-label="User menu" data-i18n-aria-label="app.aria.user_menu">P</button>
+          <div class="user-menu" id="userMenu">
+            <button class="user-menu__item" type="button" data-user-menu="profile" data-i18n="user_menu.profile">Go to Profile</button>
+            <button class="user-menu__item" type="button" data-user-menu="settings" data-i18n="user_menu.settings">Settings</button>
+            <button class="user-menu__item user-menu__item--danger" type="button" data-user-menu="logout" data-i18n="user_menu.logout">Log Out</button>
+          </div>
         </div>
       </div>
     </header>
@@ -102,43 +108,60 @@
       <!-- ── DASHBOARD HUB ── -->
       <section class="view view--active" id="view-dashboard">
         <div class="hub">
-          <button class="hub__panel hub__panel--session" data-subview="session">
+          <button class="hub__panel hub__panel--session" data-action="quick-session">
             <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <div class="hub__text">
-              <h2 class="hub__title">Create Session</h2>
-              <p class="hub__desc">Add players, rate skills, and generate balanced teams.</p>
-            </div>
-            <span class="hub__arrow">→</span>
-          </button>
-          <button class="hub__panel hub__panel--stats" data-subview="stats">
-            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <div class="hub__text">
-              <h2 class="hub__title">My Stats</h2>
-              <p class="hub__desc">Track your sessions, players, and balancing history.</p>
+              <h2 class="hub__title" data-i18n="app.dashboard.quick.title">Create a quick game</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.quick.desc">Balanced teams only. Nicknames on this device — no @ accounts, nothing saved to profiles.</p>
             </div>
             <span class="hub__arrow">→</span>
           </button>
           <button class="hub__panel hub__panel--groups" data-subview="groups">
             <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <div class="hub__text">
-              <h2 class="hub__title">Groups</h2>
-              <p class="hub__desc">Manage your squads and save regular player groups.</p>
+              <h2 class="hub__title" data-i18n="app.dashboard.groups.title">Groups</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.groups.desc">Join or create a group — at 10 verified members, official play saves stats to profiles in real time and counts toward milestones.</p>
             </div>
             <span class="hub__arrow">→</span>
           </button>
-          <div class="hub__panel hub__panel--store hub__panel--locked">
-            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-3-5z"/><line x1="3" y1="7" x2="21" y2="7"/><path d="M16 11a4 4 0 0 1-8 0"/></svg>
+          <button class="hub__panel hub__panel--stats" data-subview="stats">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             <div class="hub__text">
-              <h2 class="hub__title">Store</h2>
-              <p class="hub__desc">Gear, kits, and extras for your squad.</p>
+              <h2 class="hub__title" data-i18n="app.dashboard.stats.title">My Stats</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.stats.desc">Totals from official sessions in verified groups — updated live on your profile when games are saved.</p>
             </div>
-            <span class="hub__badge-soon">Coming Soon</span>
+            <span class="hub__arrow">→</span>
+          </button>
+          <button type="button" class="hub__panel hub__panel--milestones" data-subview="milestones">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title" data-i18n="app.dashboard.milestones.title">Milestones</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.milestones.desc">Long-term targets for official sessions and MVP awards.</p>
+              <p class="hub__teaser" id="milestoneHubTeaser" aria-live="polite"></p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
+          <div class="hub__panel hub__panel--store hub__panel--locked" role="status" data-i18n-aria-label="app.dashboard.store.aria">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title" data-i18n="app.dashboard.store.title">Store</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.store.desc">Cosmetics and extras for your profile — coming later.</p>
+            </div>
+            <span class="hub__badge-soon" data-i18n="app.dashboard.store.badge">Coming soon</span>
           </div>
+          <button type="button" class="hub__panel hub__panel--howto" data-subview="howto">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title" data-i18n="app.dashboard.howto.title">How to Use</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.howto.desc">Quick guide for groups, sessions, and invites.</p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
         </div>
 
         <!-- Live Sessions -->
         <div class="live-sessions" id="liveSessions">
-          <h2 class="live-sessions__title">Live Sessions</h2>
+          <h2 class="live-sessions__title" data-i18n="app.live_sessions.title">Live Sessions</h2>
           <div class="live-sessions__grid" id="liveSessionsGrid"></div>
         </div>
       </section>
@@ -147,70 +170,93 @@
       <section class="view" id="view-session">
         <button class="back-btn" data-back="dashboard">
           <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Back to Dashboard
+          <span data-i18n="app.back_to_dashboard">Back to Dashboard</span>
         </button>
 
         <!-- Step Indicator -->
         <div class="wizard__steps">
           <div class="wizard__step wizard__step--active" data-step-indicator="1">
             <span class="wizard__step-num">1</span>
-            <span class="wizard__step-label">Match Info</span>
+            <span class="wizard__step-label" data-i18n="app.wizard.step.match_info">Match Info</span>
           </div>
           <div class="wizard__step-line"></div>
           <div class="wizard__step" data-step-indicator="2">
             <span class="wizard__step-num">2</span>
-            <span class="wizard__step-label">Teams</span>
+            <span class="wizard__step-label" data-i18n="app.wizard.step.teams">Teams</span>
           </div>
           <div class="wizard__step-line"></div>
           <div class="wizard__step" data-step-indicator="3">
             <span class="wizard__step-num">3</span>
-            <span class="wizard__step-label">Players</span>
+            <span class="wizard__step-label" data-i18n="app.wizard.step.players">Players</span>
           </div>
         </div>
 
         <!-- STEP 1: Match Info -->
         <div class="wizard__panel wizard__panel--active" id="wizardStep1">
+          <div class="card" id="sessionModeCard">
+            <h2 class="card__title" data-i18n="app.session_mode.title">Session Mode</h2>
+            <p class="wiz-form__hint" style="margin-top:6px;" data-i18n="app.session_mode.hint">Quick games: nicknames only (no @ accounts), nothing saved. Official sessions need a verified group (10 verified members): save online, live profile stats, milestones and rewards.</p>
+            <div class="wiz-form" style="margin-top:var(--space-sm);">
+              <div class="wiz-form__group">
+                <label class="wiz-form__label" for="sessionMode" data-i18n="app.session_mode.mode">Mode</label>
+                <select class="wiz-form__input" id="sessionMode">
+                  <option value="quick" data-i18n="app.session_mode.quick">Quick game (no history saved)</option>
+                  <option value="official" data-i18n="app.session_mode.official">Official Group Session (saved)</option>
+                </select>
+              </div>
+              <div class="wiz-form__group" id="officialGroupWrap" style="display:none;">
+                <label class="wiz-form__label" for="officialGroupSelect" data-i18n="app.session_mode.group">Group</label>
+                <div class="wiz-form__row" style="gap:var(--space-sm);align-items:center;">
+                  <select class="wiz-form__input" id="officialGroupSelect" style="flex:1;">
+                    <option value="" data-i18n="app.session_mode.select_group">Select a group…</option>
+                  </select>
+                  <button class="btn btn--secondary btn--sm" type="button" id="manageGroupsBtn" data-i18n="app.dashboard.groups.title">Groups</button>
+                </div>
+                <p class="wiz-form__hint" id="officialGroupHint" style="margin-top:6px;"></p>
+              </div>
+            </div>
+          </div>
           <div class="card card--add">
-            <h2 class="card__title">Match Details</h2>
+            <h2 class="card__title" data-i18n="app.match_details.title">Match Details</h2>
             <div class="wiz-form">
               <div class="wiz-form__group">
-                <label class="wiz-form__label" for="sessionVenue">Venue</label>
-                <input class="wiz-form__input" type="text" id="sessionVenue" placeholder="e.g. Riverside Pitch" autocomplete="off" required>
+                <label class="wiz-form__label" for="sessionVenue" data-i18n="app.match_details.venue">Venue</label>
+                <input class="wiz-form__input" type="text" id="sessionVenue" data-i18n-placeholder="app.match_details.venue_ph" placeholder="e.g. Riverside Pitch" autocomplete="off" required>
               </div>
               <div class="wiz-form__row">
                 <div class="wiz-form__group">
-                  <label class="wiz-form__label" for="sessionDate">Date</label>
+                  <label class="wiz-form__label" for="sessionDate" data-i18n="app.match_details.date">Date</label>
                   <input class="wiz-form__input" type="date" id="sessionDate">
                 </div>
                 <div class="wiz-form__group">
-                  <label class="wiz-form__label" for="sessionTime">Time</label>
+                  <label class="wiz-form__label" for="sessionTime" data-i18n="app.match_details.time">Time</label>
                   <input class="wiz-form__input" type="time" id="sessionTime">
                 </div>
               </div>
             </div>
           </div>
           <button class="btn btn--primary btn--large btn--generate" id="wizardNext1">
-            Next: Team Setup <span class="btn__arrow">→</span>
+            <span data-i18n="app.wizard.next.team_setup">Next: Team Setup</span> <span class="btn__arrow">→</span>
           </button>
         </div>
 
         <!-- STEP 2: Team Configuration -->
         <div class="wizard__panel" id="wizardStep2">
           <div class="card">
-            <h2 class="card__title">Team Configuration</h2>
-            <p class="wiz-form__hint">How many teams and players per team?</p>
+            <h2 class="card__title" data-i18n="app.team_config.title">Team Configuration</h2>
+            <p class="wiz-form__hint" data-i18n="app.team_config.hint">How many teams and players per team?</p>
             <div class="team-config">
               <div class="team-config__group">
-                <label class="wiz-form__label" for="numTeams">Teams</label>
+                <label class="wiz-form__label" for="numTeams" data-i18n="app.team_config.teams">Teams</label>
                 <div class="stepper">
                   <button class="stepper__btn" data-stepper="numTeams" data-dir="-1">−</button>
                   <input class="stepper__val" type="number" id="numTeams" value="2" min="2" max="8" readonly>
                   <button class="stepper__btn" data-stepper="numTeams" data-dir="1">+</button>
                 </div>
               </div>
-              <span class="team-config__of">of</span>
+              <span class="team-config__of" data-i18n="app.team_config.of">of</span>
               <div class="team-config__group">
-                <label class="wiz-form__label" for="playersPerTeam">Players each</label>
+                <label class="wiz-form__label" for="playersPerTeam" data-i18n="app.team_config.players_each">Players each</label>
                 <div class="stepper">
                   <button class="stepper__btn" data-stepper="playersPerTeam" data-dir="-1">−</button>
                   <input class="stepper__val" type="number" id="playersPerTeam" value="5" min="2" max="15" readonly>
@@ -218,14 +264,14 @@
                 </div>
               </div>
             </div>
-            <p class="team-config__summary" id="teamSummary">2 teams × 5 players = 10 players needed</p>
+            <p class="team-config__summary" id="teamSummary" data-i18n="app.team_config.summary_example">2 teams × 5 players = 10 players needed</p>
           </div>
           <div class="wizard__nav-row">
             <button class="btn btn--secondary" id="wizardBack2">
-              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Back
+              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> <span data-i18n="app.actions.back_plain">Back</span>
             </button>
             <button class="btn btn--primary btn--large" id="wizardNext2" style="flex:1">
-              Next: Add Players <span class="btn__arrow">→</span>
+              <span data-i18n="app.wizard.next.add_players">Next: Add Players</span> <span class="btn__arrow">→</span>
             </button>
           </div>
         </div>
@@ -234,20 +280,20 @@
         <div class="wizard__panel" id="wizardStep3">
           <div class="card card--add">
             <div class="card__header">
-              <h2 class="card__title">Add Player</h2>
+              <h2 class="card__title" data-i18n="app.player.add_title">Add Player</h2>
               <span class="card__count card__count--light" id="playerProgress">0 / 10</span>
             </div>
             <form class="add-form" id="addPlayerForm">
               <div class="add-form__fields add-form__fields--wizard">
                 <div class="add-form__group">
-                  <label class="add-form__label" for="playerName">Name <span class="add-form__hint">type @ to find accounts</span></label>
+                  <label class="add-form__label" for="playerName"><span data-i18n="app.player.name">Name</span> <span class="add-form__hint" id="playerNameHint"></span></label>
                   <div class="mention-wrap">
-                    <input class="add-form__input" type="text" id="playerName" placeholder="e.g. Marcus or @username" autocomplete="off" required>
+                    <input class="add-form__input" type="text" id="playerName" data-i18n-placeholder="app.player.name_ph" placeholder="e.g. Marcus or @username" autocomplete="off" required>
                     <div class="mention-dropdown" id="mentionDropdown"></div>
                   </div>
                 </div>
                 <div class="add-form__group">
-                  <label class="add-form__label" for="playerRating">Level <span class="add-form__rating-val" id="ratingVal">5</span></label>
+                  <label class="add-form__label" for="playerRating"><span data-i18n="app.player.level">Level</span> <span class="add-form__rating-val" id="ratingVal">5</span></label>
                   <input class="add-form__range" type="range" id="playerRating" min="1" max="10" value="5">
                   <div class="add-form__range-labels">
                     <span>1</span>
@@ -256,51 +302,51 @@
                 </div>
               </div>
               <div class="add-form__group">
-                <label class="add-form__label">Position</label>
+                <label class="add-form__label" data-i18n="app.player.position">Position</label>
                 <div class="pos-picker" id="posPicker">
                   <button type="button" class="pos-picker__btn pos-picker__btn--active" data-pos="HYB">
-                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                    <span>Hybrid</span>
+                    <span class="pos-picker__icon pos-picker__icon--hyb" aria-hidden="true"></span>
+                    <span data-i18n="app.player.pos.hybrid">Hybrid</span>
                   </button>
                   <button type="button" class="pos-picker__btn" data-pos="ATK">
-                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    <span>Attacker</span>
+                    <span class="pos-picker__icon pos-picker__icon--atk" aria-hidden="true"></span>
+                    <span data-i18n="app.player.pos.attacker">Attacker</span>
                   </button>
                   <button type="button" class="pos-picker__btn" data-pos="DEF">
-                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    <span>Defender</span>
+                    <span class="pos-picker__icon pos-picker__icon--def" aria-hidden="true"></span>
+                    <span data-i18n="app.player.pos.defender">Defender</span>
                   </button>
                   <button type="button" class="pos-picker__btn" data-pos="GK">
-                    <svg class="pos-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M6 8H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/><rect x="6" y="4" width="12" height="16" rx="1"/></svg>
-                    <span>Goalkeeper</span>
+                    <span class="pos-picker__icon pos-picker__icon--gk" aria-hidden="true"></span>
+                    <span data-i18n="app.player.pos.goalkeeper">Goalkeeper</span>
                   </button>
                 </div>
               </div>
-              <button type="submit" class="btn btn--primary add-form__submit">Add Player <span class="btn__arrow">+</span></button>
+              <button type="submit" class="btn btn--primary add-form__submit"><span data-i18n="app.player.add">Add Player</span> <span class="btn__arrow">+</span></button>
             </form>
           </div>
 
           <!-- Player Roster -->
           <div class="card">
             <div class="card__header">
-              <h2 class="card__title">Player Roster</h2>
-              <span class="card__count" id="playerCount">0 players</span>
+              <h2 class="card__title" data-i18n="app.roster.title">Player Roster</h2>
+              <span class="card__count" id="playerCount" data-i18n="app.players.count" data-i18n-vars='{"count":0}'>0 players</span>
             </div>
             <div class="roster" id="roster">
               <div class="empty-state" id="rosterEmpty">
                 <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span class="empty-state__text">No players yet</span>
-                <span class="empty-state__sub">Add your crew above to get started</span>
+                <span class="empty-state__text" data-i18n="app.roster.empty_title">No players yet</span>
+                <span class="empty-state__sub" data-i18n="app.roster.empty_sub">Add your crew above to get started</span>
               </div>
             </div>
           </div>
 
           <div class="wizard__nav-row">
             <button class="btn btn--secondary" id="wizardBack3">
-              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Back
+              <span class="btn__arrow" style="transform:scaleX(-1)">→</span> <span data-i18n="app.actions.back_plain">Back</span>
             </button>
             <button class="btn btn--primary btn--large btn--generate" id="generateBtn" disabled style="flex:1">
-              Generate Teams <span class="btn__arrow">→</span>
+              <span data-i18n="app.wizard.generate">Generate Teams</span> <span class="btn__arrow">→</span>
             </button>
           </div>
         </div>
@@ -308,20 +354,21 @@
         <!-- RESULTS -->
         <div class="wizard__panel" id="wizardResults" style="display:none;">
           <div class="results__header">
-            <h2 class="results__title">Your Teams</h2>
+            <h2 class="results__title" data-i18n="app.results.title">Your Teams</h2>
             <div class="results__meta" id="resultsMeta"></div>
           </div>
           <div class="results-grid" id="resultsGrid"></div>
           <div class="results__actions" style="margin-top:var(--space-md);display:flex;flex-direction:column;gap:var(--space-sm);">
             <button class="btn btn--primary btn--large" id="resultsConfirm" style="width:100%;justify-content:center;">
-              Confirm & Go Live <span class="btn__arrow">→</span>
+              <span data-i18n="app.session.confirm_go_live">Confirm &amp; Go Live</span> <span class="btn__arrow">→</span>
             </button>
+            <p class="wiz-form__hint" id="resultsConfirmHint" style="margin:0;text-align:center;"></p>
             <div class="wizard__nav-row">
               <button class="btn btn--secondary" id="resultsBack">
-                <span class="btn__arrow" style="transform:scaleX(-1)">→</span> Re-shuffle
+                <span class="btn__arrow" style="transform:scaleX(-1)">→</span> <span data-i18n="app.results.reshuffle">Re-shuffle</span>
               </button>
               <button class="btn btn--secondary" id="resultsNewSession" style="flex:1">
-                New Session <span class="btn__arrow">+</span>
+                <span data-i18n="app.session.new">New Session</span> <span class="btn__arrow">+</span>
               </button>
             </div>
           </div>
@@ -330,7 +377,7 @@
         <!-- Loading state for team generation -->
         <div class="generate-loading" id="generateLoading" style="display:none;">
           <div class="generate-loading__bar"><div class="generate-loading__bar-fill"></div></div>
-          <span class="generate-loading__text">Balancing...</span>
+          <span class="generate-loading__text" data-i18n="app.results.balancing">Balancing...</span>
         </div>
       </section>
 
@@ -338,29 +385,118 @@
       <section class="view" id="view-stats">
         <button class="back-btn" data-back="dashboard">
           <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Back to Dashboard
+          <span data-i18n="app.back_to_dashboard">Back to Dashboard</span>
         </button>
 
-        <div class="profile__grid">
+        <div class="profile__grid profile__grid--three">
           <div class="card card--stat">
             <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <span class="card--stat__val" id="statSessions">0</span>
-            <span class="card--stat__label">Sessions</span>
+            <span class="card--stat__label" data-i18n="app.stats.sessions_played">Sessions Played</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8L6 20H18L20 8M4 8L5.71624 9.37299C6.83218 10.2657 7.39014 10.7121 7.95256 10.7814C8.4453 10.8421 8.94299 10.7173 9.34885 10.4314C9.81211 10.1051 10.0936 9.4483 10.6565 8.13476L12 5M4 8C4.55228 8 5 7.55228 5 7C5 6.44772 4.55228 6 4 6C3.44772 6 3 6.44772 3 7C3 7.55228 3.44772 8 4 8ZM20 8L18.2838 9.373C17.1678 10.2657 16.6099 10.7121 16.0474 10.7814C15.5547 10.8421 15.057 10.7173 14.6511 10.4314C14.1879 10.1051 13.9064 9.4483 13.3435 8.13476L12 5M20 8C20.5523 8 21 7.55228 21 7C21 6.44772 20.5523 6 20 6C19.4477 6 19 6.44772 19 7C19 7.55228 19.4477 8 20 8ZM12 5C12.5523 5 13 4.55228 13 4C13 3.44772 12.5523 3 12 3C11.4477 3 11 3.44772 11 4C11 4.55228 11.4477 5 12 5ZM12 4H12.01M20 7H20.01M4 7H4.01"/></svg>
+            <span class="card--stat__val" id="statMvpsStats">0</span>
+            <span class="card--stat__label" data-i18n="app.stats.mvps">MVPs</span>
           </div>
           <div class="card card--stat">
             <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span class="card--stat__val" id="statPlayers">0</span>
-            <span class="card--stat__label">Players Added</span>
+            <span class="card--stat__val" id="statGroupsStats">0</span>
+            <span class="card--stat__label" data-i18n="app.stats.groups">Groups</span>
           </div>
           <div class="card card--stat">
-            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span class="card--stat__val" id="statGroups">0</span>
-            <span class="card--stat__label">Groups</span>
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="card--stat__val" id="statFriendsStats">0</span>
+            <span class="card--stat__label" data-i18n="app.stats.friends">Friends</span>
           </div>
-          <div class="card card--stat">
-            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span class="card--stat__val" id="statGames">0</span>
-            <span class="card--stat__label">Teams Generated</span>
+        </div>
+      </section>
+
+      <!-- ── MILESTONES (sub-view) ── -->
+      <section class="view" id="view-milestones">
+        <button type="button" class="back-btn" data-back="dashboard">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span data-i18n="app.back_to_dashboard">Back to Dashboard</span>
+        </button>
+
+        <div class="card">
+          <h2 class="card__title" data-i18n="app.milestone.page_title">Milestones</h2>
+          <p class="wiz-form__hint milestone-intro" data-i18n="app.milestone.intro">You only see the next milestone in each track. Finish it to unlock the next tier.</p>
+          <p class="milestone-summary" id="milestonePageSummary" aria-live="polite"></p>
+          <div class="milestone-list" id="milestoneList"></div>
+        </div>
+      </section>
+
+      <!-- ── HOW TO USE (sub-view) ── -->
+      <section class="view" id="view-howto">
+        <button class="back-btn" data-back="dashboard">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span data-i18n="app.back_to_dashboard">Back to Dashboard</span>
+        </button>
+
+        <div class="card">
+          <h2 class="card__title" data-i18n="app.howto.title">How to Use NiteRun</h2>
+          <p class="wiz-form__hint" style="margin-top:6px;" data-i18n="app.howto.hint">Two ways to use it. A quick game for right now. Official for proper groups.</p>
+
+          <div class="wizard__nav-row" style="margin-top:var(--space-sm);">
+            <button class="btn btn--secondary" type="button" id="howtoQuickBtn" style="flex:1;justify-content:center;">
+              <span data-i18n="app.howto.cta.quick">Start a quick game</span> <span class="btn__arrow">→</span>
+            </button>
+            <button class="btn btn--primary" type="button" id="howtoGroupBtn" style="flex:1;justify-content:center;">
+              <span data-i18n="app.howto.cta.group">Create a Group</span> <span class="btn__arrow">+</span>
+            </button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr;gap:var(--space-md);margin-top:var(--space-md);">
+            <div class="card" style="padding:18px;">
+              <p class="setting-row__label" style="margin:0;" data-i18n="app.howto.quick.title">Quick game (not saved)</p>
+              <p class="setting-row__desc" style="margin-top:6px;" data-i18n="app.howto.quick.desc">Perfect when you just want teams, fast.</p>
+              <div style="display:grid;gap:10px;margin-top:12px;">
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.quick.s1.title">1) Add players</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.quick.s1.desc">Names + skill level + position.</span>
+                  </div>
+                </div>
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.quick.s2.title">2) Generate teams</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.quick.s2.desc">Balanced in seconds.</span>
+                  </div>
+                </div>
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.quick.s3.title">No database saving</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.quick.s3.desc">No @ accounts, no invites, no MVP, no saved history. Just nicknames and teams.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:18px;">
+              <p class="setting-row__label" style="margin:0;" data-i18n="app.howto.official.title">Official Groups (Saved)</p>
+              <p class="setting-row__desc" style="margin-top:6px;" data-i18n="app.howto.official.desc">Weekly games with the full package: saved history, live profile stats, MVP tracking, and progress toward milestones and rewards.</p>
+              <div style="display:grid;gap:10px;margin-top:12px;">
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.official.s1.title">1) Create or join a group</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s1.desc">Use an invite code, or start your own.</span>
+                  </div>
+                </div>
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.official.s2.title">2) Verify the group</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s2.desc">10 members must verify their email. That activates the group: real-time stats on profiles plus milestones and rewards.</span>
+                  </div>
+                </div>
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.official.s3.title">3) Create official sessions</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s3.desc">Admins save sessions and award MVP. Each game updates profiles immediately and counts toward your milestones.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -369,20 +505,26 @@
       <section class="view" id="view-groups">
         <button class="back-btn" data-back="dashboard">
           <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Back to Dashboard
+          <span data-i18n="app.back_to_dashboard">Back to Dashboard</span>
         </button>
 
-        <div class="card">
+        <div class="card groups-card">
           <div class="card__header">
-            <h2 class="card__title">My Groups</h2>
-            <button class="btn btn--primary btn--sm" id="createGroupBtn">New Group <span class="btn__arrow">+</span></button>
+            <h2 class="card__title" data-i18n="app.groups.title">My Groups</h2>
+            <div class="groups-card__actions">
+              <button class="btn btn--secondary btn--sm" id="joinGroupBtn"><span data-i18n="app.groups.join">Join Group</span> <span class="btn__arrow">→</span></button>
+              <button class="btn btn--primary btn--sm" id="createOfficialGroupBtn"><span data-i18n="app.groups.new">New Group</span> <span class="btn__arrow">+</span></button>
+            </div>
           </div>
           <div id="groupsList">
             <div class="empty-state" id="groupsEmpty">
               <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span class="empty-state__text">No squads saved yet</span>
-              <span class="empty-state__sub">Create one for your regulars</span>
+              <span class="empty-state__text" data-i18n="app.groups.empty_title">No groups yet</span>
+              <span class="empty-state__sub" data-i18n="app.groups.empty_sub">Create or join a group. At 10 verified members you get live profile stats and milestones that count.</span>
             </div>
+          </div>
+          <div class="groups-card__note">
+            <span data-i18n="app.groups.note">A group verifies at 10 members with verified email. Then official sessions save online, stats update on each profile in real time, and play counts toward milestones and rewards. Only verified group admins can save sessions.</span>
           </div>
         </div>
       </section>
@@ -391,11 +533,11 @@
       <section class="view" id="view-search">
         <div class="search-bar">
           <svg class="search-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-bar__input" type="text" id="searchInput" placeholder="Search players, groups..." autocomplete="off">
-          <button class="search-bar__close" id="searchClose" aria-label="Close search">×</button>
+          <input class="search-bar__input" type="text" id="searchInput" data-i18n-placeholder="app.search.placeholder" placeholder="Search players, groups..." autocomplete="off">
+          <button class="search-bar__close" id="searchClose" aria-label="Close search" data-i18n-aria-label="app.aria.close_search">×</button>
         </div>
         <div class="search-results" id="searchResults">
-          <p class="search-results__hint">Start typing to search for players and groups.</p>
+          <p class="search-results__hint" data-i18n="app.search.start_typing">Start typing to search for players and groups.</p>
         </div>
       </section>
 
@@ -412,9 +554,9 @@
               </div>
               <input type="file" id="avatarInput" accept="image/*" class="profile__avatar-input">
             </div>
-            <h2 class="profile__name">Player</h2>
+            <h2 class="profile__name" data-i18n="app.user.player">Player</h2>
             <p class="profile__username" id="profileUsername"></p>
-            <p class="profile__meta">Member since 2026</p>
+            <p class="profile__meta" data-i18n="app.member_since" data-i18n-vars='{"year":2026}'>Member since 2026</p>
           </div>
         </div>
 
@@ -423,23 +565,23 @@
           <div class="card card--stat">
             <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <span class="card--stat__val" id="statSessions2">0</span>
-            <span class="card--stat__label">Sessions</span>
+            <span class="card--stat__label" data-i18n="app.stats.sessions">Sessions</span>
           </div>
           <div class="card card--stat">
             <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span class="card--stat__val" id="statFriends">0</span>
-            <span class="card--stat__label">Friends</span>
+            <span class="card--stat__label" data-i18n="app.stats.friends">Friends</span>
           </div>
           <div class="card card--stat">
-            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8L6 20H18L20 8M4 8L5.71624 9.37299C6.83218 10.2657 7.39014 10.7121 7.95256 10.7814C8.4453 10.8421 8.94299 10.7173 9.34885 10.4314C9.81211 10.1051 10.0936 9.4483 10.6565 8.13476L12 5M4 8C4.55228 8 5 7.55228 5 7C5 6.44772 4.55228 6 4 6C3.44772 6 3 6.44772 3 7C3 7.55228 3.44772 8 4 8ZM20 8L18.2838 9.373C17.1678 10.2657 16.6099 10.7121 16.0474 10.7814C15.5547 10.8421 15.057 10.7173 14.6511 10.4314C14.1879 10.1051 13.9064 9.4483 13.3435 8.13476L12 5M20 8C20.5523 8 21 7.55228 21 7C21 6.44772 20.5523 6 20 6C19.4477 6 19 6.44772 19 7C19 7.55228 19.4477 8 20 8ZM12 5C12.5523 5 13 4.55228 13 4C13 3.44772 12.5523 3 12 3C11.4477 3 11 3.44772 11 4C11 4.55228 11.4477 5 12 5ZM12 4H12.01M20 7H20.01M4 7H4.01"/></svg>
             <span class="card--stat__val" id="statMvps">0</span>
-            <span class="card--stat__label">MVPs</span>
+            <span class="card--stat__label" data-i18n="app.stats.mvps">MVPs</span>
           </div>
         </div>
 
         <!-- Session History -->
         <div class="card">
-          <h2 class="card__title">Session History</h2>
+          <h2 class="card__title" data-i18n="app.session_history.title">Session History</h2>
           <div id="sessionHistory">
             <div class="empty-state">
               <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -454,11 +596,21 @@
       <!-- ── SETTINGS VIEW ── -->
       <section class="view" id="view-settings">
         <div class="card">
-          <h2 class="card__title">Preferences</h2>
+          <h2 class="card__title" data-i18n="app.settings.preferences">Preferences</h2>
           <div class="setting-row">
             <div class="setting-row__text">
-              <span class="setting-row__label">Dark Mode</span>
-              <span class="setting-row__desc">Switch to a darker colour scheme</span>
+              <span class="setting-row__label" data-i18n="app.settings.language">Language</span>
+              <span class="setting-row__desc" data-i18n="app.settings.language_desc">English or Portuguese (Portugal)</span>
+            </div>
+            <div class="lang-switch lang-switch--settings" data-lang-switcher-group role="group" data-i18n-aria-label="lang.aria.switcher">
+              <button type="button" class="lang-switch__btn" data-lang="en" aria-pressed="true">EN</button>
+              <button type="button" class="lang-switch__btn" data-lang="pt-PT" aria-pressed="false">PT</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__label" data-i18n="app.settings.dark_mode">Dark Mode</span>
+              <span class="setting-row__desc" data-i18n="app.settings.dark_mode_desc">Switch to a darker colour scheme</span>
             </div>
             <div class="toggle">
               <input type="checkbox" class="toggle__input" id="toggleDark">
@@ -467,8 +619,8 @@
           </div>
           <div class="setting-row">
             <div class="setting-row__text">
-              <span class="setting-row__label">Notifications</span>
-              <span class="setting-row__desc">Get alerts for match reminders</span>
+              <span class="setting-row__label" data-i18n="app.settings.notifications">Notifications</span>
+              <span class="setting-row__desc" data-i18n="app.settings.notifications_desc">Get alerts for match reminders</span>
             </div>
             <div class="toggle">
               <input type="checkbox" class="toggle__input" id="toggleNotifs">
@@ -477,8 +629,8 @@
           </div>
           <div class="setting-row">
             <div class="setting-row__text">
-              <span class="setting-row__label">Email notifications</span>
-              <span class="setting-row__desc">Receive emails for friend requests, session invites, MVP, etc.</span>
+              <span class="setting-row__label" data-i18n="app.settings.email_notifications">Email notifications</span>
+              <span class="setting-row__desc" data-i18n="app.settings.email_notifications_desc">Receive emails for friend requests, session invites, MVP, etc.</span>
             </div>
             <div class="toggle">
               <input type="checkbox" class="toggle__input" id="toggleEmailNotifs" checked>
@@ -487,8 +639,8 @@
           </div>
           <div class="setting-row setting-row--last">
             <div class="setting-row__text">
-              <span class="setting-row__label">Auto-save Roster</span>
-              <span class="setting-row__desc">Persist player data between sessions</span>
+              <span class="setting-row__label" data-i18n="app.settings.autosave">Auto-save Roster</span>
+              <span class="setting-row__desc" data-i18n="app.settings.autosave_desc">Persist player data between sessions</span>
             </div>
             <div class="toggle">
               <input type="checkbox" class="toggle__input" id="toggleAutosave" checked>
@@ -498,52 +650,52 @@
         </div>
 
         <div class="card">
-          <h2 class="card__title">Account</h2>
+          <h2 class="card__title" data-i18n="app.settings.account">Account</h2>
           <div class="setting-row setting-row--stacked">
             <div class="setting-row__text">
-              <span class="setting-row__label">Display Name</span>
-              <span class="setting-row__desc">How others see you on the app</span>
+              <span class="setting-row__label" data-i18n="app.settings.display_name">Display Name</span>
+              <span class="setting-row__desc" data-i18n="app.settings.display_name_desc">How others see you on the app</span>
             </div>
             <div class="setting-row__edit">
-              <input type="text" class="setting-row__input" id="editDisplayName" maxlength="30" placeholder="Your name">
-              <button class="btn btn--primary btn--sm" id="saveDisplayName">Save</button>
+              <input type="text" class="setting-row__input" id="editDisplayName" maxlength="30" data-i18n-placeholder="app.settings.display_name_ph" placeholder="Your name">
+              <button class="btn btn--primary btn--sm" id="saveDisplayName" data-i18n="app.actions.save">Save</button>
             </div>
           </div>
           <div class="setting-row setting-row--stacked">
             <div class="setting-row__text">
-              <span class="setting-row__label">Email</span>
-              <span class="setting-row__desc" id="currentEmailDisplay">Loading...</span>
+              <span class="setting-row__label" data-i18n="auth.label.email">Email</span>
+              <span class="setting-row__desc" id="currentEmailDisplay" data-i18n="app.loading">Loading...</span>
             </div>
             <div class="setting-row__edit">
-              <input type="email" class="setting-row__input" id="editEmail" maxlength="100" placeholder="new@example.com">
-              <button class="btn btn--primary btn--sm" id="saveEmail">Update</button>
+              <input type="email" class="setting-row__input" id="editEmail" maxlength="100" data-i18n-placeholder="app.settings.email_ph" placeholder="new@example.com">
+              <button class="btn btn--primary btn--sm" id="saveEmail" data-i18n="app.actions.update">Update</button>
             </div>
             <p class="setting-row__note" id="emailNote"></p>
           </div>
           <div class="setting-row setting-row--last">
             <div class="setting-row__text">
-              <span class="setting-row__label">Password</span>
-              <span class="setting-row__desc">We'll send a link to your email to change it</span>
+              <span class="setting-row__label" data-i18n="app.settings.password">Password</span>
+              <span class="setting-row__desc" data-i18n="app.settings.password_desc">We'll send a link to your email to change it</span>
             </div>
-            <button class="btn btn--secondary btn--sm" id="resetPasswordBtn">Change Password <span class="btn__arrow">→</span></button>
+            <button class="btn btn--secondary btn--sm" id="resetPasswordBtn"><span data-i18n="app.actions.change_password">Change Password</span> <span class="btn__arrow">→</span></button>
           </div>
         </div>
 
         <div class="card">
-          <h2 class="card__title">Danger Zone</h2>
+          <h2 class="card__title" data-i18n="app.settings.danger_zone">Danger Zone</h2>
           <div class="setting-row">
             <div class="setting-row__text">
-              <span class="setting-row__label">Clear All Data</span>
-              <span class="setting-row__desc">Remove all saved players and history</span>
+              <span class="setting-row__label" data-i18n="modal.clear_data.title">Clear All Data</span>
+              <span class="setting-row__desc" data-i18n="settings.clear_data.desc">Clears quick-session players and device stats (doesn’t delete your account or official sessions)</span>
             </div>
-            <button class="btn btn--danger" id="clearDataBtn">Clear <span class="btn__arrow">×</span></button>
+            <button class="btn btn--danger" id="clearDataBtn"><span data-i18n="app.actions.clear">Clear</span> <span class="btn__arrow">×</span></button>
           </div>
           <div class="setting-row setting-row--last">
             <div class="setting-row__text">
-              <span class="setting-row__label">Log Out</span>
-              <span class="setting-row__desc">Sign out of your account</span>
+              <span class="setting-row__label" data-i18n="user_menu.logout">Log Out</span>
+              <span class="setting-row__desc" data-i18n="app.settings.logout_desc">Sign out of your account</span>
             </div>
-            <button class="btn btn--secondary btn--sm" id="logoutBtn">Log Out <span class="btn__arrow">→</span></button>
+            <button class="btn btn--secondary btn--sm" id="logoutBtn"><span data-i18n="user_menu.logout">Log Out</span> <span class="btn__arrow">→</span></button>
           </div>
         </div>
       </section>
@@ -551,7 +703,7 @@
       <!-- ── USER PROFILE VIEW (other users / own friends list) ── -->
       <section class="view" id="view-user">
         <div class="uview__topbar">
-          <button class="uview__back" id="uviewBack">&larr; Back</button>
+          <button class="uview__back" id="uviewBack"><span data-i18n="app.actions.back">&larr; Back</span></button>
         </div>
         <div id="uviewContent"></div>
       </section>

@@ -2,6 +2,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMemberOfGroup(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isAdminOfGroup(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function groupIsVerified(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId))
+        && get(/databases/$(database)/documents/groups/$(groupId)).data.isVerified == true;
+    }
+
     // Users: any user can read (unauthenticated reads needed for username
     // availability checks during registration). Owner can create/update own doc.
     // Other authenticated users can update social fields only.
@@ -21,14 +41,50 @@ service cloud.firestore {
       }
     }
 
+    // Groups: anyone signed in can read; only admins can update group metadata.
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.memberCount == 1
+        && request.resource.data.verifiedMemberCount == 1;
+
+      // Only admins can update group doc (e.g. counts, name, verification).
+      allow update: if isAdminOfGroup(groupId);
+      allow delete: if false;
+
+      // Membership: any member of the group can read all member docs (roster + @ mentions in sessions).
+      match /members/{memberId} {
+        allow read: if isMemberOfGroup(groupId);
+
+        // Joining: user can create their own member doc.
+        allow create: if isSignedIn() && memberId == request.auth.uid;
+
+        // Updates: admins can update membership (e.g. role); members can only update their own snapshot fields.
+        allow update: if isSignedIn()
+          && (
+            isAdminOfGroup(groupId)
+            || (memberId == request.auth.uid
+                && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['displayName', 'username', 'photoURL']))
+          );
+
+        allow delete: if false;
+      }
+    }
+
     // Sessions: any authenticated user can read (needed for live session queries);
     // only the creator can create/update; no deletes
     match /sessions/{sessionId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-                    && request.resource.data.creatorId == request.auth.uid;
-      allow update: if request.auth != null
-                    && resource.data.creatorId == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.groupId is string
+                    && groupIsVerified(request.resource.data.groupId)
+                    && isAdminOfGroup(request.resource.data.groupId);
+      allow update: if isSignedIn()
+                    && resource.data.creatorId == request.auth.uid
+                    && isAdminOfGroup(resource.data.groupId);
       allow delete: if false;
     }
 
