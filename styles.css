@@ -1002,9 +1002,34 @@ a.app-launch--blocked.btn--nav:active {
   gap: var(--space-md);
 }
 
+.footer__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
 .footer__copy {
   font-size: 0.75rem;
   opacity: 0.3;
+}
+
+.footer__studio {
+  font-size: 0.75rem;
+  opacity: 0.3;
+}
+
+.footer__studio-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
+  margin-left: 0.25em;
+}
+
+.footer__studio-link:hover {
+  opacity: 1;
 }
 
 .footer__credit {
@@ -1129,7 +1154,11 @@ a.app-launch--blocked.btn--nav:active {
     font-size: clamp(2.6rem, 12vw, 4.5rem);
   }
 
-  /* Footer */
+  /* Footer — extra bottom space so fixed lang + back-to-top don’t cover text */
+  .footer {
+    padding-bottom: calc(2rem + 52px + 1.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .footer__top {
     flex-direction: column;
     align-items: flex-start;

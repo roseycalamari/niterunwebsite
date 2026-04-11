@@ -75,6 +75,7 @@
 
       'footer.tagline': 'Draft Smarter. Play Harder.',
       'footer.rights': 'All rights reserved.',
+      'footer.dev_intro': 'This app was developed by',
       'footer.credit': 'Built for the pitch.',
 
       'app.dashboard.quick.title': 'Create a quick game',
@@ -484,6 +485,7 @@
 
       'footer.tagline': 'Escolhe melhor. Joga mais.',
       'footer.rights': 'Todos os direitos reservados.',
+      'footer.dev_intro': 'Esta app foi desenvolvida pela',
       'footer.credit': 'Feito para o campo.',
 
       'app.dashboard.quick.title': 'Criar um jogo rápido',
