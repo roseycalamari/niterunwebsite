@@ -11,9 +11,102 @@ initializeApp();
 const db = getFirestore();
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const RESEND_WEBHOOK_SECRET = defineSecret("RESEND_WEBHOOK_SECRET");
 const FROM_EMAIL = "NiteRun <notifications@niterun.app>";
 
-const { buildEmail, getSubject, buildWelcomeEmail, buildVerifyEmailTemplate, PREFERENCES_URL } = require("./email-templates");
+const {
+  buildEmail,
+  getSubject,
+  buildWelcomeEmail,
+  buildVerifyEmailTemplate,
+  PREFERENCES_URL,
+} = require("./email-templates");
+
+async function logEmailAttempt(data) {
+  try {
+    await db.collection("emailLogs").add(Object.assign({ createdAt: Date.now() }, data));
+  } catch (e) {
+    console.error("Failed to write email log:", e);
+  }
+}
+
+/* ----------------------------------------------------------
+   Cloud Function: Resend webhook receiver (HTTP)
+   Stores delivered/bounced/complained events for tracing
+   ---------------------------------------------------------- */
+exports.resendWebhook = onRequest(
+  { cors: false, invoker: "public", secrets: [RESEND_WEBHOOK_SECRET] },
+  async (req, res) => {
+    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+
+    const raw = req.rawBody ? req.rawBody.toString("utf8") : "";
+    const svixId = req.get("svix-id") || "";
+    const svixTimestamp = req.get("svix-timestamp") || "";
+    const svixSignature = req.get("svix-signature") || "";
+
+    if (!raw || !svixId || !svixTimestamp || !svixSignature) {
+      return res.status(400).send("Bad Request");
+    }
+
+    // Dedupe (Resend is at-least-once delivery)
+    const deliveryRef = db.collection("webhookDeliveries").doc(svixId);
+    const existing = await deliveryRef.get();
+    if (existing.exists) return res.status(200).send("OK");
+
+    let event;
+    try {
+      const resend = new Resend("dummy");
+      event = resend.webhooks.verify({
+        payload: raw,
+        headers: { id: svixId, timestamp: svixTimestamp, signature: svixSignature },
+        webhookSecret: RESEND_WEBHOOK_SECRET.value(),
+      });
+    } catch (e) {
+      console.error("Invalid Resend webhook:", e);
+      return res.status(400).send("Invalid webhook");
+    }
+
+    const emailId = event && event.data ? event.data.email_id : null;
+    const type = event && event.type ? String(event.type) : "unknown";
+    const createdAt = event && event.created_at ? String(event.created_at) : null;
+
+    await deliveryRef.set({
+      svixId,
+      receivedAt: Date.now(),
+      type,
+      emailId,
+      createdAt,
+    });
+
+    // Store full event payload (kept separate so delivery doc stays tiny)
+    await db.collection("emailWebhookEvents").add({
+      receivedAt: Date.now(),
+      svixId,
+      type,
+      emailId,
+      createdAt,
+      event,
+    });
+
+    // Best-effort correlation back to our send logs
+    if (emailId) {
+      try {
+        const snap = await db.collection("emailLogs").where("providerId", "==", emailId).limit(5).get();
+        if (!snap.empty) {
+          const update = { lastEventType: type, lastEventAt: Date.now() };
+          if (type === "email.delivered") update.deliveredAt = Date.now();
+          if (type === "email.bounced") update.bouncedAt = Date.now();
+          if (type === "email.complained") update.complainedAt = Date.now();
+          await Promise.all(snap.docs.map((d) => d.ref.set(update, { merge: true })));
+        }
+      } catch (e) {
+        console.error("Failed to correlate email webhook:", e);
+      }
+    }
+
+    return res.status(200).send("OK");
+  }
+);
 
 /* ----------------------------------------------------------
    Cloud Function: send custom verification email (callable)
@@ -54,12 +147,32 @@ exports.sendVerification = onCall(
     });
 
     const resend = new Resend(RESEND_API_KEY.value());
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [userRecord.email],
-      subject: "Verify your email — NiteRun",
-      html: html,
-    });
+    try {
+      const resp = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: [userRecord.email],
+        subject: "Verify your email — NiteRun",
+        html: html,
+      });
+      await logEmailAttempt({
+        type: "verify_email",
+        to: userRecord.email,
+        uid: uid,
+        ok: true,
+        provider: "resend",
+        providerId: resp && resp.data ? resp.data.id : null,
+      });
+    } catch (err) {
+      await logEmailAttempt({
+        type: "verify_email",
+        to: userRecord.email,
+        uid: uid,
+        ok: false,
+        provider: "resend",
+        error: String(err && (err.message || err)),
+      });
+      throw err;
+    }
 
     return { sent: true };
   }

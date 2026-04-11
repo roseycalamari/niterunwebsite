@@ -234,6 +234,52 @@ h1, h2, h3, h4 {
   transform: translateX(4px);
 }
 
+/* App launch gated — NITERUN_BLOCK_APP_LAUNCH in site-config.js */
+a.app-launch--blocked {
+  cursor: not-allowed !important;
+  opacity: 0.55;
+}
+
+a.app-launch--blocked:hover,
+a.app-launch--blocked:active,
+a.app-launch--blocked:focus-visible {
+  transform: none !important;
+}
+
+a.app-launch--blocked:hover .btn__arrow,
+a.app-launch--blocked:focus-visible .btn__arrow {
+  transform: none;
+}
+
+a.app-launch--blocked.btn--primary:hover,
+a.app-launch--blocked.btn--primary:focus-visible {
+  box-shadow: 4px 4px 0 var(--black) !important;
+}
+
+a.app-launch--blocked.btn--primary:active {
+  box-shadow: 2px 2px 0 var(--black) !important;
+}
+
+a.app-launch--blocked.btn--secondary:hover,
+a.app-launch--blocked.btn--secondary:focus-visible {
+  box-shadow: 4px 4px 0 var(--black) !important;
+  background-color: var(--cream) !important;
+  color: var(--black) !important;
+}
+
+a.app-launch--blocked.btn--secondary:active {
+  box-shadow: 2px 2px 0 var(--black) !important;
+}
+
+a.app-launch--blocked.btn--nav:hover,
+a.app-launch--blocked.btn--nav:focus-visible {
+  box-shadow: 3px 3px 0 var(--black) !important;
+}
+
+a.app-launch--blocked.btn--nav:active {
+  box-shadow: 2px 2px 0 var(--black) !important;
+}
+
 .btn--primary {
   background-color: var(--blue);
   color: var(--cream);

@@ -9,6 +9,8 @@
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
+    maybeBlockAppLaunch();
+
     gsap.registerPlugin(ScrollTrigger);
 
     gsap.set(['.hero__tag', '.hero__sub', '.hero__actions'], {
@@ -24,6 +26,40 @@
     mobileMenu();
     buttonInteractions();
     backToTop();
+  }
+
+  /* ==========================
+     APP LAUNCH GATE (site-config.js)
+     ========================== */
+  function maybeBlockAppLaunch() {
+    if (!window.NITERUN_BLOCK_APP_LAUNCH) return;
+
+    document.querySelectorAll('a[href="auth.html"]').forEach(function (a) {
+      if (a.getAttribute('data-app-launch-gated') === '1') return;
+
+      a.setAttribute('data-app-launch-gated', '1');
+      a.setAttribute('data-app-launch-href', 'auth.html');
+      a.setAttribute('href', '#');
+      a.setAttribute('aria-disabled', 'true');
+      a.setAttribute('tabindex', '-1');
+      a.setAttribute('data-i18n-title', 'site.app_launch_blocked.title');
+      a.setAttribute('data-i18n-aria-label', 'site.app_launch_blocked.aria');
+      a.classList.add('app-launch--blocked');
+
+      function blockNav(e) {
+        e.preventDefault();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      }
+
+      a.addEventListener('click', blockNav, true);
+      a.addEventListener('auxclick', function (e) {
+        if (e.button === 1) blockNav(e);
+      }, true);
+    });
+
+    if (window.NiteRunI18n && typeof window.NiteRunI18n.apply === 'function') {
+      window.NiteRunI18n.apply();
+    }
   }
 
   /* ==========================

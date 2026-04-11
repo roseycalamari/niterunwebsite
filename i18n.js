@@ -24,6 +24,8 @@
       'nav.features': 'Features',
       'nav.get_started': 'Get Started',
       'nav.launch_app': 'Launch App',
+      'site.app_launch_blocked.title': 'The app is not open to everyone yet.',
+      'site.app_launch_blocked.aria': 'App access is not available yet.',
 
       'how.eyebrow': 'Get Started',
       'how.title': 'How to Use',
@@ -431,6 +433,8 @@
       'nav.features': 'Funcionalidades',
       'nav.get_started': 'Começar',
       'nav.launch_app': 'Abrir App',
+      'site.app_launch_blocked.title': 'A app ainda não está aberta a todos.',
+      'site.app_launch_blocked.aria': 'O acesso à app ainda não está disponível.',
 
       'how.eyebrow': 'Começar',
       'how.title': 'Como Usar',
@@ -439,7 +443,7 @@
       'how.step2.title': 'Criar / Entrar num Grupo',
       'how.step2.desc': 'Queres algo oficial? Cria um grupo ou entra com um código de convite.',
       'how.step3.title': 'Verificar (10 Membros)',
-      'how.step3.desc': 'Cada um cria conta e confirma o email (link na mensagem). Com 10 membros com email verificado o grupo ativa-se: sessões oficiais na cloud, estatísticas em tempo real nos perfis de todos, e o jogo conta para marcos e recompensas.',
+      'how.step3.desc': 'Cada um cria conta e confirma o email. Com 10 membros com email verificado o grupo ativa-se: sessões oficiais na cloud, estatísticas em tempo real nos perfis de todos, e o jogo conta para marcos e recompensas.',
       'how.step4.title': 'Sessões Oficiais',
       'how.step4.desc': 'Admins verificados guardam sessões, convidam contas e atribuem MVP. Cada jogo oficial fechado atualiza os perfis na hora e avança os teus marcos.',
       'how.cta': 'Abrir NiteRun',

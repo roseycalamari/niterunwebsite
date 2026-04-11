@@ -508,4 +508,10 @@ function buildEmail(type, data) {
   }
 }
 
-module.exports = { buildEmail, getSubject, buildWelcomeEmail, buildVerifyEmailTemplate, PREFERENCES_URL };
+module.exports = {
+  buildEmail,
+  getSubject,
+  buildWelcomeEmail,
+  buildVerifyEmailTemplate,
+  PREFERENCES_URL,
+};

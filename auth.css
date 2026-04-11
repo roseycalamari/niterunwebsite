@@ -395,6 +395,15 @@ body.dark .auth-brand__back {
     gap: 1rem;
   }
 
+  /* Move language switcher out of the top strip on mobile */
+  .auth-brand__lang {
+    position: fixed;
+    left: calc(env(safe-area-inset-left, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    margin-top: 0;
+    z-index: 2000;
+  }
+
   .auth-brand__inner {
     gap: 0.2rem;
   }
