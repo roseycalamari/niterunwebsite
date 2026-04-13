@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/confirmAccountDeletion",
+      "destination": "https://us-central1-niterun.cloudfunctions.net/confirmAccountDeletion"
+    }
+  ]
+}
