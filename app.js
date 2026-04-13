@@ -152,7 +152,7 @@
     setupGroups();
     setupClearData();
     setupModal();
-    setupLogout();
+    setupDeleteAccount();
     renderRoster();
     updateStats();
 
@@ -2020,17 +2020,43 @@
     }).catch(function () {});
   }
 
-  /* ---------- LOGOUT ---------- */
-  function setupLogout() {
-    var logoutBtn = document.getElementById('logoutBtn');
-    if (!logoutBtn) return;
+  /* ---------- DELETE ACCOUNT (email confirm via Cloud Function) ---------- */
+  function setupDeleteAccount() {
+    var btn = document.getElementById('requestDeleteAccountBtn');
+    if (!btn) return;
 
-    logoutBtn.addEventListener('click', function () {
-      if (typeof auth !== 'undefined' && auth.signOut) {
-        auth.signOut().then(function () {
-          window.location.href = 'auth.html';
-        });
-      }
+    btn.addEventListener('click', function () {
+      showModal({
+        title: t('modal.delete_account.title'),
+        message: t('modal.delete_account.body'),
+        danger: true,
+        confirmText: t('modal.action.send_delete_email'),
+        onConfirm: function () {
+          if (typeof functions === 'undefined' || !functions || !functions.httpsCallable) {
+            showToast(t('toast.delete_account_no_functions'), 'danger');
+            return;
+          }
+          if (!currentUser) return;
+          var fn = functions.httpsCallable('requestAccountDeletion');
+          btn.disabled = true;
+          fn()
+            .then(function () {
+              showToast(t('toast.delete_account_email_sent'), 'success');
+            })
+            .catch(function (err) {
+              console.error(err);
+              var code = err && err.code ? String(err.code) : '';
+              if (code.indexOf('failed-precondition') !== -1) {
+                showToast(t('toast.delete_account_no_email'), 'danger');
+              } else {
+                showToast(t('toast.delete_account_email_failed'), 'danger');
+              }
+            })
+            .finally(function () {
+              btn.disabled = false;
+            });
+        }
+      });
     });
   }
 

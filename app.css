@@ -1477,6 +1477,15 @@ body.dark #view-groups .groups-card__note {
   margin-bottom: var(--space-md);
 }
 
+.card--danger-zone {
+  border-color: var(--red);
+  box-shadow: 5px 5px 0 var(--red);
+}
+
+.card--danger-zone .card__title {
+  color: var(--red);
+}
+
 .card__header {
   display: flex;
   align-items: center;
@@ -3903,6 +3912,15 @@ body.dark .card {
   background-color: #1c1c22;
   border-color: #2a2a32;
   box-shadow: 5px 5px 0 #0e0e11;
+}
+
+body.dark .card--danger-zone {
+  border-color: var(--red);
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--red) 72%, #0e0e11);
+}
+
+body.dark .card--danger-zone .card__title {
+  color: var(--red);
 }
 
 body.dark .card__title {

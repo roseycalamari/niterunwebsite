@@ -49,6 +49,7 @@ const BL = "#006dff";
 const GD = "#f59e0b";
 const GR = "#22c55e";
 const GY = "#6b6b6b";
+const RD = "#e53e3e";
 
 /* ---- Avatar (matches .topbar__avatar / .profile__avatar) ---- */
 function avatar(data, s) {
@@ -91,6 +92,16 @@ function ctaSec(label) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
 <tr><td style="padding:0 4px 4px 0;background-color:${BK};">
 <a href="${APP_URL}" target="_blank" style="display:inline-block;padding:14px 36px;background-color:${CR};color:${BK};font-family:${F};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BK};">${label} &rarr;</a>
+</td></tr>
+</table>`;
+}
+
+/* ---- Destructive CTA (custom URL) — account deletion confirm ---- */
+function ctaDangerHref(label, href) {
+  const h = href && /^https:\/\//.test(String(href)) ? String(href) : APP_URL;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+<tr><td style="padding:0 4px 4px 0;background-color:${BK};">
+<a href="${esc(h)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 36px;background-color:${RD};color:${CR};font-family:${F};font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${BK};mso-padding-alt:0;">${esc(label)} &rarr;</a>
 </td></tr>
 </table>`;
 }
@@ -214,6 +225,66 @@ function buildWelcomeEmail(data) {
     </td>
   </tr>`;
   return shell("Welcome", BL, inner, "You're receiving this because you just signed up for NiteRun.");
+}
+
+
+/* ============================================================
+   ACCOUNT DELETION — serious tone, red accent, single confirm CTA
+   ============================================================ */
+function buildAccountDeletionEmail(data) {
+  const name = esc(data.displayName || "");
+  const link = data.confirmLink && /^https:\/\//.test(String(data.confirmLink)) ? String(data.confirmLink) : APP_URL;
+  const inner = `
+  <tr>
+    <td style="padding:36px 28px 0;text-align:center;">
+      ${eyebrow("SECURITY", RD)}
+      ${heading("CONFIRM ACCOUNT<br>DELETION", 26)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:20px 28px 0;text-align:center;">
+      ${body(
+        name
+          ? `Hi ${name}, we received a request to <strong>permanently delete</strong> your NiteRun account and remove your data from our systems.`
+          : `We received a request to <strong>permanently delete</strong> this NiteRun account and remove associated data from our systems.`
+      )}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:16px 28px 0;text-align:center;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CR};border:2px solid ${RD};">
+        <tr>
+          <td style="padding:18px 20px;">
+            <p style="margin:0;font-family:${F};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:${RD};">What happens next</p>
+            <p style="margin:10px 0 0;font-family:${F};font-size:14px;font-weight:500;line-height:1.65;color:${BK};">
+              If you continue, we will remove your profile, friends links, group memberships, saved sessions you created, notifications, and your sign-in. <strong>This cannot be undone.</strong>
+            </p>
+            <p style="margin:12px 0 0;font-family:${F};font-size:13px;font-weight:500;line-height:1.6;color:${GY};">
+              Didn’t request this? You can ignore this email — your account will stay as it is.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 28px 12px;text-align:center;">
+      ${ctaDangerHref("DELETE MY ACCOUNT — CONFIRM", link)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:0 28px 36px;text-align:center;">
+      <p style="margin:0;font-family:${F};font-size:11px;font-weight:500;line-height:1.6;color:${GY};max-width:420px;margin-left:auto;margin-right:auto;">
+        Link expires in 48 hours. For your security, only open this button on a device you trust.
+      </p>
+    </td>
+  </tr>`;
+  return shell(
+    "Delete account",
+    RD,
+    inner,
+    "This message was sent because a signed-in user requested account deletion in NiteRun settings."
+  );
 }
 
 
@@ -513,5 +584,7 @@ module.exports = {
   getSubject,
   buildWelcomeEmail,
   buildVerifyEmailTemplate,
+  buildAccountDeletionEmail,
   PREFERENCES_URL,
+  APP_URL,
 };

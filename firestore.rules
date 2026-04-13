@@ -73,6 +73,14 @@ service cloud.firestore {
       }
     }
 
+    // Account deletion flow — server (Admin SDK) only; clients never touch these
+    match /accountDeletionRequests/{token} {
+      allow read, write: if false;
+    }
+    match /accountDeletionPending/{userId} {
+      allow read, write: if false;
+    }
+
     // Sessions: any authenticated user can read (needed for live session queries);
     // only the creator can create/update; no deletes
     match /sessions/{sessionId} {
