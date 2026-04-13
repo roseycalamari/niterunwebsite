@@ -3,3 +3,4 @@
  * Set to false when you want “Launch App” links to work again.
  */
 window.NITERUN_BLOCK_APP_LAUNCH = true;
+window.NITERUN_BLOCK_APP_LAUNCH = false;
