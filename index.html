@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-PT">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    (function () {
+      try {
+        if (!localStorage.getItem('niterun_lang')) localStorage.setItem('niterun_lang', 'pt-PT');
+      } catch (e) {}
+    })();
+  </script>
   <script src="i18n.js"></script>
 </head>
 <body>
@@ -70,14 +77,14 @@
       <div class="marquee-wrap">
         <div class="marquee marquee--left">
           <div class="marquee__track">
-            <span class="marquee__content">STACKED TEAMS &nbsp;&middot;&nbsp; BORING GAMES &nbsp;&middot;&nbsp; 20 MINUTES ARGUING &nbsp;&middot;&nbsp; SAME RESULT EVERY WEEK &nbsp;&middot;&nbsp; NOBODY WANTS TO PICK &nbsp;&middot;&nbsp;</span>
-            <span class="marquee__content" aria-hidden="true">STACKED TEAMS &nbsp;&middot;&nbsp; BORING GAMES &nbsp;&middot;&nbsp; 20 MINUTES ARGUING &nbsp;&middot;&nbsp; SAME RESULT EVERY WEEK &nbsp;&middot;&nbsp; NOBODY WANTS TO PICK &nbsp;&middot;&nbsp;</span>
+            <span class="marquee__content" data-i18n="problem.marquee.left">STACKED TEAMS · BORING GAMES · 20 MINUTES ARGUING · SAME RESULT EVERY WEEK · NOBODY WANTS TO PICK ·</span>
+            <span class="marquee__content" aria-hidden="true" data-i18n="problem.marquee.left">STACKED TEAMS · BORING GAMES · 20 MINUTES ARGUING · SAME RESULT EVERY WEEK · NOBODY WANTS TO PICK ·</span>
           </div>
         </div>
         <div class="marquee marquee--right">
           <div class="marquee__track">
-            <span class="marquee__content">MATES PICKING MATES &nbsp;&middot;&nbsp; SOMEONE ALWAYS GETS SHAFTED &nbsp;&middot;&nbsp; UNFAIR SQUADS &nbsp;&middot;&nbsp; GAME OVER BEFORE KICKOFF &nbsp;&middot;&nbsp;</span>
-            <span class="marquee__content" aria-hidden="true">MATES PICKING MATES &nbsp;&middot;&nbsp; SOMEONE ALWAYS GETS SHAFTED &nbsp;&middot;&nbsp; UNFAIR SQUADS &nbsp;&middot;&nbsp; GAME OVER BEFORE KICKOFF &nbsp;&middot;&nbsp;</span>
+            <span class="marquee__content" data-i18n="problem.marquee.right">MATES PICKING MATES · SOMEONE ALWAYS GETS SHAFTED · UNFAIR SQUADS · GAME OVER BEFORE KICKOFF ·</span>
+            <span class="marquee__content" aria-hidden="true" data-i18n="problem.marquee.right">MATES PICKING MATES · SOMEONE ALWAYS GETS SHAFTED · UNFAIR SQUADS · GAME OVER BEFORE KICKOFF ·</span>
           </div>
         </div>
       </div>

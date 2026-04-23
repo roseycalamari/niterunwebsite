@@ -144,6 +144,7 @@
     setupDarkMode();
     setupNavigation();
     setupHubPanels();
+    setupOnboarding();
     setupBackButtons();
     setupSearch();
     setupWizard();
@@ -173,6 +174,41 @@
       setupFriendsCard();
       setupAccountSettings();
     }
+  }
+
+  /* ---------- ONBOARDING (first-time helper) ---------- */
+  function setupOnboarding() {
+    var card = document.getElementById('onboardCard');
+    if (!card) return;
+
+    var key = 'niterun_onboard_dismissed_v1';
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(key) === '1'; } catch (e) {}
+    if (dismissed) return;
+
+    card.style.display = '';
+
+    var dismissBtn = document.getElementById('onboardDismiss');
+    var ctaCreate = document.getElementById('onboardCtaCreate');
+    var ctaHowto = document.getElementById('onboardCtaHowto');
+
+    function dismiss() {
+      card.style.display = 'none';
+      try { localStorage.setItem(key, '1'); } catch (e) {}
+    }
+
+    if (dismissBtn) dismissBtn.addEventListener('click', dismiss);
+    if (ctaCreate) ctaCreate.addEventListener('click', function () {
+      dismiss();
+      switchView('groups');
+      setTimeout(function () {
+        if (els.createOfficialGroupBtn) els.createOfficialGroupBtn.click();
+      }, 120);
+    });
+    if (ctaHowto) ctaHowto.addEventListener('click', function () {
+      dismiss();
+      switchView('howto');
+    });
   }
 
   function setupUserMenu() {
@@ -948,7 +984,7 @@
 
   function renderOfficialGroupSelect() {
     if (!els.officialGroupSelect) return;
-    var html = '<option value="">Select a group…</option>';
+    var html = '<option value="">' + escapeHtml(t('app.groups.select_placeholder')) + '</option>';
     officialGroups.forEach(function (g) {
       html += '<option value="' + g.id + '">' + escapeHtml(g.name) + '</option>';
     });
@@ -974,8 +1010,10 @@
       var initial = (g.name || 'G').charAt(0).toUpperCase();
       var verified = !!g.isVerified;
       var v = g.verifiedMemberCount || 0;
-      var status = verified ? 'Verified' : (v + ' / 10 verified');
-      var roleTag = g.myRole === 'admin' ? 'Admin' : 'Member';
+      var status = verified
+        ? t('app.groups.status_verified')
+        : t('app.groups.status_progress', { count: v });
+      var roleTag = g.myRole === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
 
       item.innerHTML =
         '<div class="group-item__info">' +
@@ -987,10 +1025,10 @@
         '</div>' +
         '<div class="roster__actions">' +
           (verified && g.myRole === 'admin'
-            ? '<button class="roster__btn roster__btn--edit" data-create-session="' + g.id + '" title="Create official session">+</button>'
+            ? '<button class="roster__btn roster__btn--edit" data-create-session="' + g.id + '" data-i18n-title="app.groups.action_create_session" title="' + escapeHtml(t('app.groups.action_create_session')) + '">+</button>'
             : '') +
           (g.joinCode
-            ? '<button class="roster__btn roster__btn--edit" data-copy="' + escapeHtml(g.joinCode) + '" title="Copy invite code">⎘</button>'
+            ? '<button class="roster__btn roster__btn--edit" data-copy="' + escapeHtml(g.joinCode) + '" data-i18n-title="app.groups.action_copy_code" title="' + escapeHtml(t('app.groups.action_copy_code')) + '">⎘</button>'
             : '') +
         '</div>';
 
@@ -3197,77 +3235,85 @@
     }
 
     setTimeout(function () {
-      if (els.generateLoading) els.generateLoading.style.display = 'none';
-      if (els.generateBtn) els.generateBtn.disabled = false;
+      try {
+        if (els.generateLoading) els.generateLoading.style.display = 'none';
+        if (els.generateBtn) els.generateBtn.disabled = false;
 
-      var pool = players.slice();
+        var pool = players.slice();
 
-      var teams = [];
-      for (var t = 0; t < nTeams; t++) {
-        teams.push({ players: [], effTotal: 0, uiTotal: 0 });
-      }
-
-      var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
-      var others = pool.filter(function (p) { return p.position !== 'GK'; });
-
-      goalkeepers.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
-
-      goalkeepers.forEach(function (gk) {
-        var u = utilityScore(gk);
-        var idx = pickBestTeamIndex(teams, gk, ppt, nTeams, function (T, i, addU) {
-          var sp = simulatedSpreadAfterAdd(T, i, addU);
-          var gkc = countPosOnTeam(T[i], 'GK');
-          var sz = T[i].players.length;
-          var ef = T[i].effTotal;
-          return [sp, gkc, sz, ef];
-        });
-        if (idx !== null) {
-          teams[idx].players.push(gk);
-          teams[idx].effTotal += u;
-          teams[idx].uiTotal += gk.rating;
+        var teams = [];
+        for (var t = 0; t < nTeams; t++) {
+          teams.push({ players: [], effTotal: 0, uiTotal: 0 });
         }
-      });
 
-      others.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
+        var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
+        var others = pool.filter(function (p) { return p.position !== 'GK'; });
 
-      others.forEach(function (player) {
-        var idx = pickBestTeamIndex(teams, player, ppt, nTeams, function (T, i, addU, pl) {
-          var sp = simulatedSpreadAfterAdd(T, i, addU);
-          var pc = countPosOnTeam(T[i], pl.position);
-          var sz = T[i].players.length;
-          var ef = T[i].effTotal;
-          return [sp, pc, sz, ef];
+        goalkeepers.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
+
+        goalkeepers.forEach(function (gk) {
+          var u = utilityScore(gk);
+          var idx = pickBestTeamIndex(teams, gk, ppt, nTeams, function (T, i, addU) {
+            var sp = simulatedSpreadAfterAdd(T, i, addU);
+            var gkc = countPosOnTeam(T[i], 'GK');
+            var sz = T[i].players.length;
+            var ef = T[i].effTotal;
+            return [sp, gkc, sz, ef];
+          });
+          if (idx !== null) {
+            teams[idx].players.push(gk);
+            teams[idx].effTotal += u;
+            teams[idx].uiTotal += gk.rating;
+          }
         });
-        if (idx !== null) {
-          teams[idx].players.push(player);
-          teams[idx].effTotal += u;
-          teams[idx].uiTotal += player.rating;
+
+        others.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
+
+        others.forEach(function (player) {
+          var u = utilityScore(player);
+          var idx = pickBestTeamIndex(teams, player, ppt, nTeams, function (T, i, addU, pl) {
+            var sp = simulatedSpreadAfterAdd(T, i, addU);
+            var pc = countPosOnTeam(T[i], pl.position);
+            var sz = T[i].players.length;
+            var ef = T[i].effTotal;
+            return [sp, pc, sz, ef];
+          });
+          if (idx !== null) {
+            teams[idx].players.push(player);
+            teams[idx].effTotal += u;
+            teams[idx].uiTotal += player.rating;
+          }
+        });
+
+        recomputeTeamTotals(teams);
+        refineTeamsBySwaps(teams, nTeams);
+        recomputeTeamTotals(teams);
+
+        renderResults(teams);
+
+        /* Track games (device tally only — quick games don't count) */
+        if (!isQuickSessionMode()) {
+          gamesGenerated++;
         }
-      });
+        saveData();
 
-      recomputeTeamTotals(teams);
-      refineTeamsBySwaps(teams, nTeams);
-      recomputeTeamTotals(teams);
+        /* Store pending — don't go live until user confirms */
+        pendingSession = { teams: teams, nTeams: nTeams, ppt: ppt };
+        var confirmBtn = document.getElementById('resultsConfirm');
+        if (confirmBtn) {
+          confirmBtn.disabled = !isOfficialModeReady();
+          confirmBtn.innerHTML = escapeHtml(t('app.session.confirm_go_live')) + ' <span class="btn__arrow">\u2192</span>';
+          confirmBtn.classList.remove('btn--confirmed');
+        }
 
-      renderResults(teams);
-
-      /* Track games (device tally only — quick games don't count) */
-      if (!isQuickSessionMode()) {
-        gamesGenerated++;
+        showToast(t('toast.teams_balanced'), 'success');
+        updateConfirmButtonState();
+      } catch (err) {
+        console.error('Team generation failed:', err);
+        if (els.generateLoading) els.generateLoading.style.display = 'none';
+        if (els.generateBtn) els.generateBtn.disabled = false;
+        showToast(t('toast.something_went_wrong') || 'Something went wrong.', 'danger');
       }
-      saveData();
-
-      /* Store pending — don't go live until user confirms */
-      pendingSession = { teams: teams, nTeams: nTeams, ppt: ppt };
-      var confirmBtn = document.getElementById('resultsConfirm');
-      if (confirmBtn) {
-        confirmBtn.disabled = !isOfficialModeReady();
-        confirmBtn.innerHTML = escapeHtml(t('app.session.confirm_go_live')) + ' <span class="btn__arrow">\u2192</span>';
-        confirmBtn.classList.remove('btn--confirmed');
-      }
-
-      showToast(t('toast.teams_balanced'), 'success');
-      updateConfirmButtonState();
     }, 700);
   }
 

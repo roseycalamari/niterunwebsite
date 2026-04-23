@@ -108,6 +108,21 @@
       <!-- ── DASHBOARD HUB ── -->
       <section class="view view--active" id="view-dashboard">
         <div class="hub">
+          <div class="card onboard-card" id="onboardCard" style="display:none;">
+            <div class="card__header">
+              <h2 class="card__title" data-i18n="app.onboard.title">Start with a group</h2>
+              <button class="roster__btn roster__btn--edit" type="button" id="onboardDismiss" data-i18n-title="app.onboard.dismiss_title" title="Dismiss">×</button>
+            </div>
+            <p class="wiz-form__hint" style="margin-top:6px;" data-i18n="app.onboard.desc">Create a group, share the code, reach 10 verified members — then official sessions save stats to everyone’s profile.</p>
+            <div class="wizard__nav-row" style="margin-top:var(--space-sm);">
+              <button class="btn btn--primary" type="button" id="onboardCtaCreate" style="flex:1;justify-content:center;">
+                <span data-i18n="app.onboard.cta_create">Create a group</span> <span class="btn__arrow">+</span>
+              </button>
+              <button class="btn btn--secondary" type="button" id="onboardCtaHowto" style="flex:1;justify-content:center;">
+                <span data-i18n="app.onboard.cta_guide">Open guide</span> <span class="btn__arrow">→</span>
+              </button>
+            </div>
+          </div>
           <button class="hub__panel hub__panel--session" data-action="quick-session">
             <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <div class="hub__text">
@@ -141,14 +156,6 @@
             </div>
             <span class="hub__arrow">→</span>
           </button>
-          <div class="hub__panel hub__panel--store hub__panel--locked" role="status" data-i18n-aria-label="app.dashboard.store.aria">
-            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <div class="hub__text">
-              <h2 class="hub__title" data-i18n="app.dashboard.store.title">Store</h2>
-              <p class="hub__desc" data-i18n="app.dashboard.store.desc">Cosmetics and extras for your profile — coming later.</p>
-            </div>
-            <span class="hub__badge-soon" data-i18n="app.dashboard.store.badge">Coming soon</span>
-          </div>
           <button type="button" class="hub__panel hub__panel--howto" data-subview="howto">
             <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
             <div class="hub__text">
@@ -485,14 +492,20 @@
                 </div>
                 <div class="setting-row" style="padding:12px 0;border:0;">
                   <div class="setting-row__text">
-                    <span class="setting-row__label" data-i18n="app.howto.official.s2.title">2) Verify the group</span>
-                    <span class="setting-row__desc" data-i18n="app.howto.official.s2.desc">10 members must verify their email. That activates the group: real-time stats on profiles plus milestones and rewards.</span>
+                    <span class="setting-row__label" data-i18n="app.howto.official.s2.title">2) Invite your squad</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s2.desc">Share the group code so everyone can join (they need an account).</span>
                   </div>
                 </div>
                 <div class="setting-row" style="padding:12px 0;border:0;">
                   <div class="setting-row__text">
-                    <span class="setting-row__label" data-i18n="app.howto.official.s3.title">3) Create official sessions</span>
-                    <span class="setting-row__desc" data-i18n="app.howto.official.s3.desc">Admins save sessions and award MVP. Each game updates profiles immediately and counts toward your milestones.</span>
+                    <span class="setting-row__label" data-i18n="app.howto.official.s3.title">3) Verify the group (10 members)</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s3.desc">When 10 members have verified emails, the group becomes official: saved games update profile stats live.</span>
+                  </div>
+                </div>
+                <div class="setting-row" style="padding:12px 0;border:0;">
+                  <div class="setting-row__text">
+                    <span class="setting-row__label" data-i18n="app.howto.official.s4.title">4) Save official sessions</span>
+                    <span class="setting-row__desc" data-i18n="app.howto.official.s4.desc">Admins can save sessions and award MVP. Each saved game updates profiles and counts toward milestones.</span>
                   </div>
                 </div>
               </div>

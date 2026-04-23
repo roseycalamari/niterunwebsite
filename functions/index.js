@@ -214,13 +214,6 @@ exports.verifyEmail = onRequest(
       const auth = getAuth();
       await auth.updateUser(data.uid, { emailVerified: true });
 
-      // Keep Firestore user profile email in sync (supports email changes too).
-      if (data.email) {
-        await db.collection("users").doc(data.uid).set(
-          { email: data.email },
-          { merge: true }
-        );
-      }
       await docRef.update({ used: true });
 
       return res.status(200).send(verifyPage("Email Verified!", "Your email has been verified successfully. You can now log in to NiteRun.", true));
@@ -281,7 +274,15 @@ exports.sendWelcomeEmail = onDocumentCreated(
     if (!snap) return;
 
     const userData = snap.data();
-    const email = userData.email;
+    const auth = getAuth();
+    let email = null;
+    try {
+      const userRecord = await auth.getUser(event.params.userId);
+      email = userRecord && userRecord.email ? String(userRecord.email) : null;
+    } catch (e) {
+      console.error("Welcome email: failed to fetch Auth user:", e);
+      return;
+    }
     if (!email) return;
 
     try {
@@ -328,12 +329,14 @@ exports.sendNotificationEmail = onDocumentCreated(
     try {
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) return;
-
       const userData = userDoc.data();
-      const email = userData.email;
-      if (!email) return;
 
       if (userData.emailNotifications === false) return;
+
+      const auth = getAuth();
+      const userRecord = await auth.getUser(userId);
+      const email = userRecord && userRecord.email ? String(userRecord.email) : null;
+      if (!email) return;
 
       const type = notifData.type || "general";
       const subject = getSubject(type, notifData);

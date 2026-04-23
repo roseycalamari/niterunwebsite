@@ -37,7 +37,10 @@ service cloud.firestore {
       // Notifications: owner full access; any authenticated user can create (to send notifs)
       match /notifications/{notifId} {
         allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null;
+        // Prevent spoofing: creator must be the signed-in user.
+        // (Still allows app flows like friend requests/invites, but blocks impersonation.)
+        allow create: if request.auth != null
+                      && request.resource.data.fromUid == request.auth.uid;
       }
     }
 

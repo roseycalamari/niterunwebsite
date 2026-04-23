@@ -27,6 +27,7 @@
   var passwordInput = document.getElementById('authPassword');
   var errorEl = document.getElementById('authError');
   var submitBtn = document.getElementById('authSubmit');
+  var submitLabel = document.getElementById('authSubmitLabel');
   var form = document.getElementById('authForm');
   var brandTitle = document.getElementById('brandTitle');
   var brandSub = document.getElementById('brandSub');
@@ -89,7 +90,10 @@
       usernameGroup.classList.remove('auth-field--visible');
 
       /* Update button */
-      submitBtn.innerHTML = t('auth.submit.login') + ' <span class="btn__arrow">\u2192</span>';
+      if (submitLabel) {
+        submitLabel.setAttribute('data-i18n', 'auth.submit.login');
+        submitLabel.textContent = t('auth.submit.login');
+      }
       passwordInput.autocomplete = 'current-password';
       passwordInput.placeholder = t('auth.placeholder.password_login');
       if (forgotBtn) forgotBtn.style.display = '';
@@ -109,7 +113,10 @@
       usernameGroup.classList.add('auth-field--visible');
 
       /* Update button */
-      submitBtn.innerHTML = t('auth.submit.register') + ' <span class="btn__arrow">\u2192</span>';
+      if (submitLabel) {
+        submitLabel.setAttribute('data-i18n', 'auth.submit.register');
+        submitLabel.textContent = t('auth.submit.register');
+      }
       passwordInput.autocomplete = 'new-password';
       passwordInput.placeholder = t('auth.placeholder.password_register');
       if (forgotBtn) forgotBtn.style.display = 'none';
@@ -128,6 +135,13 @@
   tabLogin.addEventListener('click', function () { setMode('login'); });
   tabRegister.addEventListener('click', function () { setMode('register'); });
   setMode('login');
+
+  // When language changes, re-apply current mode label/placeholder text.
+  try {
+    document.addEventListener('niterun:lang', function () {
+      setMode(mode);
+    });
+  } catch (e) {}
 
   /* ---------- USERNAME VALIDATION ---------- */
   if (usernameInput) {
@@ -286,7 +300,6 @@
           displayName: name,
           displayNameLower: name.toLowerCase(),
           username: username,
-          email: email,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           mvpCount: 0
         });
