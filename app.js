@@ -145,6 +145,7 @@
     setupNavigation();
     setupHubPanels();
     setupOnboarding();
+    setupEmptyStates();
     setupBackButtons();
     setupSearch();
     setupWizard();
@@ -168,12 +169,24 @@
       setupOfficialGroups(user);
       setupHowToUse();
       setupUserMenu();
-      listenLiveSessions(user);
       setupAvatarUpload(user);
       setupNotifications(user);
       setupFriendsCard();
       setupAccountSettings();
     }
+  }
+
+  /* ---------- EMPTY STATES (simple next-step buttons) ---------- */
+  function setupEmptyStates() {
+    var notifGroups = document.getElementById('notifEmptyGroups');
+    if (notifGroups) {
+      notifGroups.addEventListener('click', function () {
+        var dd = document.getElementById('notifDropdown');
+        if (dd) dd.classList.remove('notif-dropdown--open');
+        switchView('groups');
+      });
+    }
+
   }
 
   /* ---------- ONBOARDING (first-time helper) ---------- */
@@ -273,34 +286,50 @@
     }
   }
 
-  /* ---------- LIVE SESSIONS LISTENER ---------- */
-  var liveSessionUnsub = null;
+  /* ---------- LIVE SESSIONS (GROUP DETAIL) ---------- */
+  var groupLiveUnsub = null;
+  var groupLiveForGid = '';
 
-  function listenLiveSessions(user) {
+  function stopGroupLiveSessions() {
+    if (groupLiveUnsub) groupLiveUnsub();
+    groupLiveUnsub = null;
+    groupLiveForGid = '';
+  }
+
+  function listenGroupLiveSessions(user, gid) {
     if (typeof db === 'undefined' || !db || !user) return;
 
-    var grid = document.getElementById('liveSessionsGrid');
-    var wrap = document.getElementById('liveSessions');
+    var grid = document.getElementById('groupDetailLiveGrid');
+    var wrap = document.getElementById('groupDetailLiveSessions');
     if (!grid || !wrap) return;
 
-    if (liveSessionUnsub) liveSessionUnsub();
+    if (!gid) {
+      stopGroupLiveSessions();
+      wrap.style.display = 'none';
+      grid.innerHTML = '';
+      return;
+    }
 
-    liveSessionUnsub = db.collection('sessions')
+    if (groupLiveForGid === gid && groupLiveUnsub) return;
+    stopGroupLiveSessions();
+    groupLiveForGid = gid;
+
+    wrap.style.display = '';
+
+    groupLiveUnsub = db.collection('sessions')
+      .where('groupId', '==', gid)
       .where('status', '==', 'live')
       .orderBy('createdAt', 'desc')
       .onSnapshot(function (snapshot) {
         var sessions = [];
         snapshot.forEach(function (doc) {
           var d = doc.data();
-          var isCreator = d.creatorId === user.uid;
-          var isInvited = Array.isArray(d.invitedUids) && d.invitedUids.indexOf(user.uid) !== -1;
-          if (isCreator || isInvited) {
-            sessions.push({ id: doc.id, data: d, isCreator: isCreator });
-          }
+          sessions.push({ id: doc.id, data: d, isCreator: d.creatorId === user.uid });
         });
 
         if (sessions.length === 0) {
           wrap.style.display = 'none';
+          grid.innerHTML = '';
           return;
         }
 
@@ -325,7 +354,7 @@
           });
         });
       }, function (err) {
-        console.error('Live sessions listener error:', err);
+        console.error('Group live sessions listener error:', err);
       });
   }
 
@@ -956,6 +985,8 @@
             isVerified: !!g.isVerified,
             memberCount: g.memberCount || 0,
             verifiedMemberCount: g.verifiedMemberCount || 0,
+            createdAt: g.createdAt || null,
+            bannerURL: g.bannerURL || null,
             myRole: role
           });
         });
@@ -1027,10 +1058,15 @@
           (verified && g.myRole === 'admin'
             ? '<button class="roster__btn roster__btn--edit" data-create-session="' + g.id + '" data-i18n-title="app.groups.action_create_session" title="' + escapeHtml(t('app.groups.action_create_session')) + '">+</button>'
             : '') +
-          (g.joinCode
-            ? '<button class="roster__btn roster__btn--edit" data-copy="' + escapeHtml(g.joinCode) + '" data-i18n-title="app.groups.action_copy_code" title="' + escapeHtml(t('app.groups.action_copy_code')) + '">⎘</button>'
-            : '') +
+          '<span class="group-item__arrow" aria-hidden="true">\u2192</span>' +
         '</div>';
+
+      item.addEventListener('click', function () {
+        if (!currentUser) return;
+        selectedGroupId = g.id;
+        selectedGroup = g;
+        openGroupDetail(g.id);
+      });
 
       els.groupsList.appendChild(item);
     });
@@ -1053,17 +1089,10 @@
           els.officialGroupSelect.value = gid;
           try { els.officialGroupSelect.dispatchEvent(new Event('change')); } catch (e3) {}
         }
+        listenGroupLiveSessions(currentUser, gid);
       });
     });
 
-    els.groupsList.querySelectorAll('.roster__btn--edit[data-copy]').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var code = btn.getAttribute('data-copy') || '';
-        copyToClipboard(code);
-        showToast(t('toast.invite_code_copied'), 'success');
-      });
-    });
   }
 
   function copyToClipboard(text) {
@@ -1084,6 +1113,276 @@
       document.execCommand('copy');
       document.body.removeChild(el);
     } catch (e) {}
+  }
+
+  /* ---------- GROUP DETAIL ---------- */
+  var groupMembersUnsub = null;
+  var groupMembersForGid = '';
+  var groupSessionsUnsub = null;
+  var groupSessionsForGid = '';
+
+  function stopGroupMembersListener() {
+    if (groupMembersUnsub) groupMembersUnsub();
+    groupMembersUnsub = null;
+    groupMembersForGid = '';
+  }
+
+  function stopGroupSessionsCount() {
+    if (groupSessionsUnsub) groupSessionsUnsub();
+    groupSessionsUnsub = null;
+    groupSessionsForGid = '';
+  }
+
+  function openGroupDetail(gid) {
+    if (!currentUser || !db || !gid) return;
+    selectedGroupId = gid;
+    selectedGroup = officialGroups.find(function (x) { return x.id === gid; }) || selectedGroup || null;
+    switchView('group');
+    renderGroupDetailHeader();
+    listenGroupLiveSessions(currentUser, gid);
+    listenGroupMembers(gid);
+    listenGroupSessionsCount(gid);
+  }
+
+  function renderGroupDetailHeader() {
+    var nameEl = document.getElementById('groupDetailName');
+    var metaEl = document.getElementById('groupDetailMeta');
+    var createdEl = document.getElementById('groupCreatedOn');
+    var copyBtn = document.getElementById('groupDetailCopyCode');
+    var bannerEl = document.getElementById('groupBanner');
+    var bannerEditBtn = document.getElementById('groupBannerEdit');
+    var bannerInput = document.getElementById('groupBannerInput');
+    var statMembersEl = document.getElementById('groupStatMembers');
+    var statVerifiedEl = document.getElementById('groupStatVerified');
+    var statSessionsEl = document.getElementById('groupStatSessions');
+    if (!nameEl) return;
+
+    var g = officialGroups.find(function (x) { return x.id === selectedGroupId; }) || selectedGroup || null;
+    var gname = (g && g.name) ? g.name : 'Group';
+    nameEl.textContent = gname;
+    var initial = (gname || 'G').charAt(0).toUpperCase();
+
+    if (bannerEl) {
+      var bUrl = g && g.bannerURL ? String(g.bannerURL) : '';
+      bannerEl.style.backgroundImage = bUrl ? ('url("' + bUrl.replace(/"/g, '\\"') + '")') : 'none';
+    }
+
+    if (metaEl) {
+      if (!g) {
+        metaEl.textContent = '';
+      } else {
+        var verified = !!g.isVerified;
+        var v = g.verifiedMemberCount || 0;
+        var status = verified ? t('app.groups.status_verified') : t('app.groups.status_progress', { count: v });
+        var roleTag = g.myRole === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
+        metaEl.textContent = status + ' · ' + roleTag;
+      }
+    }
+
+    if (statMembersEl) statMembersEl.textContent = (g && typeof g.memberCount === 'number') ? String(g.memberCount) : '0';
+    if (statVerifiedEl) statVerifiedEl.textContent = (g && typeof g.verifiedMemberCount === 'number') ? String(g.verifiedMemberCount) : '0';
+    if (statSessionsEl && (!g || typeof statSessionsEl.textContent !== 'string' || !statSessionsEl.textContent)) statSessionsEl.textContent = '0';
+
+    if (createdEl) {
+      var createdAt = g && g.createdAt ? g.createdAt : null;
+      try {
+        var d = createdAt && typeof createdAt.toDate === 'function' ? createdAt.toDate() : null;
+        createdEl.textContent = d ? t('app.group.created_on', { date: d.toLocaleDateString() }) : '';
+      } catch (e) {
+        createdEl.textContent = '';
+      }
+    }
+
+    // Only admins can change the group banner
+    if (bannerEditBtn && bannerInput) {
+      var canEditBanner = !!(g && g.myRole === 'admin');
+      bannerEditBtn.style.display = canEditBanner ? '' : 'none';
+
+      if (canEditBanner) {
+        bannerEditBtn.onclick = function () { bannerInput.click(); };
+        bannerInput.onchange = function () {
+          var file = bannerInput.files && bannerInput.files[0];
+          if (!file) return;
+
+          if (!file.type || !file.type.startsWith('image/')) {
+            showToast(t('toast.avatar_select_image'), 'info');
+            return;
+          }
+
+          if (file.size > 5 * 1024 * 1024) {
+            showToast(t('toast.avatar_size_limit'), 'info');
+            return;
+          }
+
+          showToast(t('toast.uploading'), 'info');
+          compressAndUploadGroupBanner(file, selectedGroupId);
+          bannerInput.value = '';
+        };
+      } else {
+        bannerEditBtn.onclick = null;
+        bannerInput.onchange = null;
+      }
+    }
+
+    if (copyBtn) {
+      copyBtn.onclick = function () {
+        var gg = officialGroups.find(function (x) { return x.id === selectedGroupId; }) || g || null;
+        var code = gg && gg.joinCode ? gg.joinCode : '';
+        if (!code) return;
+        copyToClipboard(code);
+        showToast(t('toast.invite_code_copied'), 'success');
+      };
+    }
+  }
+
+  function compressAndUploadGroupBanner(file, gid) {
+    if (!gid) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        var maxSize = 1400; // banner can be wider
+        var w = img.width;
+        var h = img.height;
+
+        if (w > maxSize) { h = h * (maxSize / w); w = maxSize; }
+
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        canvas.toBlob(function (blob) {
+          if (!blob) { showToast(t('toast.avatar_process_failed'), 'info'); return; }
+          uploadGroupBanner(blob, gid);
+        }, 'image/jpeg', 0.82);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function uploadGroupBanner(blob, gid) {
+    if (typeof storage === 'undefined' || !storage) {
+      showToast(t('toast.storage_unavailable'), 'info');
+      return;
+    }
+    if (!db) return;
+
+    var path = 'group-banners/' + gid + '/banner.jpg';
+    var ref = storage.ref().child(path);
+
+    ref.put(blob, { contentType: 'image/jpeg' })
+      .then(function (snapshot) {
+        return snapshot.ref.getDownloadURL();
+      })
+      .then(function (url) {
+        return db.collection('groups').doc(gid).update({ bannerURL: url });
+      })
+      .then(function () {
+        showToast(t('toast.group_banner_updated'), 'success');
+      })
+      .catch(function (err) {
+        console.error('Group banner upload error:', err);
+        var c = err && err.code ? String(err.code) : '';
+        if (c === 'storage/unauthorized' || c === 'storage/unauthenticated') {
+          showToast(t('toast.error.permission') || 'Not allowed.', 'info');
+        } else if (c === 'storage/canceled') {
+          // no toast needed
+        } else if (c === 'storage/retry-limit-exceeded') {
+          showToast(t('toast.error.offline') || 'Connection issue.', 'info');
+        } else {
+          showToast(t('toast.upload_failed'), 'info');
+        }
+      });
+  }
+
+  function listenGroupSessionsCount(gid) {
+    if (!currentUser || !db) return;
+    var el = document.getElementById('groupStatSessions');
+    if (!el) return;
+
+    if (!gid) {
+      stopGroupSessionsCount();
+      el.textContent = '0';
+      return;
+    }
+
+    if (groupSessionsForGid === gid && groupSessionsUnsub) return;
+    stopGroupSessionsCount();
+    groupSessionsForGid = gid;
+
+    // Total sessions for this group (any status). We order by createdAt so Firestore can use an index.
+    groupSessionsUnsub = db.collection('sessions')
+      .where('groupId', '==', gid)
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(function (snap) {
+        el.textContent = String(snap.size || 0);
+      }, function (err) {
+        console.error('Group sessions count error:', err);
+      });
+  }
+
+  function listenGroupMembers(gid) {
+    if (!currentUser || !db) return;
+    var wrap = document.getElementById('groupDetailMembers');
+    if (!wrap) return;
+
+    if (!gid) {
+      stopGroupMembersListener();
+      wrap.innerHTML = '';
+      return;
+    }
+
+    if (groupMembersForGid === gid && groupMembersUnsub) return;
+    stopGroupMembersListener();
+    groupMembersForGid = gid;
+
+    wrap.innerHTML =
+      '<div class="empty-state">' +
+        '<span class="empty-state__text">' + escapeHtml(t('app.group.members_loading')) + '</span>' +
+      '</div>';
+
+    groupMembersUnsub = db.collection('groups').doc(gid).collection('members')
+      .orderBy('joinedAt', 'desc')
+      .onSnapshot(function (snapshot) {
+        var rows = [];
+        snapshot.forEach(function (doc) {
+          var d = doc.data() || {};
+          var nm = d.displayName || 'Player';
+          var role = d.role === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
+          var initial = (nm || 'P').charAt(0).toUpperCase();
+          var photo = d.photoURL || '';
+          var avatarHtml = photo
+            ? ('<img class="member-row__avatar-img" src="' + escapeHtml(photo) + '" alt="">')
+            : escapeHtml(initial);
+          var isAdmin = d.role === 'admin';
+          rows.push(
+            '<div class="member-row' + (isAdmin ? ' member-row--admin' : '') + '">' +
+              '<div class="member-row__left">' +
+                '<div class="member-row__avatar">' + avatarHtml + '</div>' +
+                '<div class="member-row__info">' +
+                  '<div class="member-row__name">' + escapeHtml(nm) + '</div>' +
+                  '<div class="member-row__role">' + (isAdmin ? ('<span class="member-row__admin-badge">★ ' + escapeHtml(role) + '</span>') : escapeHtml(role)) + '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          );
+        });
+
+        if (rows.length === 0) {
+          wrap.innerHTML =
+            '<div class="empty-state">' +
+              '<span class="empty-state__text">' + escapeHtml(t('app.group.members_empty')) + '</span>' +
+            '</div>';
+          return;
+        }
+
+        wrap.innerHTML = rows.join('');
+      }, function (err) {
+        console.error('Members listener error:', err);
+      });
   }
 
   function makeJoinCode() {
@@ -1143,7 +1442,11 @@
         });
       }).catch(function (err) {
         console.error('Create group error:', err);
-        showToast(t('toast.group_create_failed'), 'info');
+        var msg = t('toast.group_create_failed');
+        var c = err && err.code ? String(err.code) : '';
+        if (c === 'permission-denied') msg = t('toast.error.permission');
+        else if (c === 'unavailable') msg = t('toast.error.offline');
+        showToast(msg, 'info');
       });
     }
 
@@ -1213,7 +1516,11 @@
       });
     }).catch(function (err) {
       console.error('Join group error:', err);
-      showToast(t('toast.group_join_failed'), 'info');
+      var msg = t('toast.group_join_failed');
+      var c = err && err.code ? String(err.code) : '';
+      if (c === 'permission-denied') msg = t('toast.error.permission');
+      else if (c === 'unavailable') msg = t('toast.error.offline');
+      showToast(msg, 'info');
     });
   }
 
@@ -2306,6 +2613,7 @@
     stats: 'My Stats',
     milestones: 'Milestones',
     groups: 'Groups',
+    group: 'Group',
     howto: 'How to Use',
     search: 'Search',
     profile: 'Profile',
@@ -2380,6 +2688,17 @@
 
     if (viewName === 'profile' && currentUser) {
       loadSessionHistory(currentUser.uid, 'sessionHistory');
+    }
+
+    if (viewName !== 'group') {
+      stopGroupLiveSessions();
+      stopGroupMembersListener();
+      stopGroupSessionsCount();
+    } else if (currentUser && selectedGroupId) {
+      renderGroupDetailHeader();
+      listenGroupLiveSessions(currentUser, selectedGroupId);
+      listenGroupMembers(selectedGroupId);
+      listenGroupSessionsCount(selectedGroupId);
     }
 
     /* Focus search input when opening search */
@@ -2462,6 +2781,15 @@
             try { els.sessionMode.dispatchEvent(new Event('change')); } catch (e) {}
           }
           beginQuickSessionRoster();
+          return;
+        }
+
+        if (action === 'session-history') {
+          switchView('profile');
+          setTimeout(function () {
+            var el = document.getElementById('sessionHistory');
+            if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 200);
           return;
         }
 
@@ -3390,6 +3718,11 @@
       notifySessionInvites(invitedUids, venue);
     }).catch(function (err) {
       console.error('Failed to save session:', err);
+      var msg = t('toast.session_save_failed');
+      var c = err && err.code ? String(err.code) : '';
+      if (c === 'permission-denied') msg = t('toast.session_save_permission');
+      else if (c === 'unavailable') msg = t('toast.error.offline');
+      showToast(msg, 'danger');
     });
   }
 

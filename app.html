@@ -83,7 +83,15 @@
               <button class="notif-dropdown__clear" id="notifClearAll" data-i18n="app.notifications.clear_all">Clear all</button>
             </div>
             <div class="notif-dropdown__list" id="notifList">
-              <p class="notif-dropdown__empty" data-i18n="app.notifications.empty">No notifications</p>
+              <div class="notif-empty" id="notifEmpty">
+                <p class="notif-dropdown__empty" data-i18n="app.notifications.empty">No notifications</p>
+                <p class="notif-dropdown__hint" data-i18n="app.notifications.empty_hint">Invites and friend requests will show up here.</p>
+                <div style="margin-top:10px;">
+                  <button class="btn btn--secondary btn--sm" type="button" id="notifEmptyGroups">
+                    <span data-i18n="app.notifications.empty_cta">Go to Groups</span> <span class="btn__arrow">→</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -139,6 +147,14 @@
             </div>
             <span class="hub__arrow">→</span>
           </button>
+          <button type="button" class="hub__panel hub__panel--stats" data-action="session-history">
+            <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="hub__text">
+              <h2 class="hub__title" data-i18n="app.dashboard.sessions.title">Sessions</h2>
+              <p class="hub__desc" data-i18n="app.dashboard.sessions.desc">See your recent sessions and stats history.</p>
+            </div>
+            <span class="hub__arrow">→</span>
+          </button>
           <button class="hub__panel hub__panel--stats" data-subview="stats">
             <svg class="hub__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             <div class="hub__text">
@@ -164,12 +180,6 @@
             </div>
             <span class="hub__arrow">→</span>
           </button>
-        </div>
-
-        <!-- Live Sessions -->
-        <div class="live-sessions" id="liveSessions">
-          <h2 class="live-sessions__title" data-i18n="app.live_sessions.title">Live Sessions</h2>
-          <div class="live-sessions__grid" id="liveSessionsGrid"></div>
         </div>
       </section>
 
@@ -538,6 +548,82 @@
           </div>
           <div class="groups-card__note">
             <span data-i18n="app.groups.note">A group verifies at 10 members with verified email. Then official sessions save online, stats update on each profile in real time, and play counts toward milestones and rewards. Only verified group admins can save sessions.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── GROUP DETAIL (sub-view) ── -->
+      <section class="view" id="view-group">
+        <button class="back-btn" data-back="groups">
+          <svg class="back-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span data-i18n="app.back_to_groups">Back to Groups</span>
+        </button>
+
+        <div class="card card--group-banner">
+          <div class="group-banner" id="groupBanner" style="background-image:none;">
+            <div class="group-banner__overlay"></div>
+
+            <div class="group-banner__content">
+              <h2 class="group-banner__title" id="groupDetailName">Group</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-row__text">
+              <span class="setting-row__label" data-i18n="app.group.info_title">Group info</span>
+              <span class="setting-row__desc" id="groupDetailMeta"></span>
+            </div>
+          </div>
+          <div class="setting-row setting-row--last">
+            <div class="setting-row__text">
+              <span class="setting-row__label" data-i18n="app.group.created_label">Created</span>
+              <span class="setting-row__desc" id="groupCreatedOn"></span>
+            </div>
+          </div>
+
+          <div class="wizard__nav-row" style="margin-top:var(--space-sm);">
+            <button class="btn btn--secondary" type="button" id="groupDetailCopyCode" style="flex:1;justify-content:center;">
+              <span data-i18n="app.groups.action_copy_code">Copy invite code</span> <span class="btn__arrow">⎘</span>
+            </button>
+            <button class="btn btn--primary" type="button" id="groupBannerEdit" style="flex:1;justify-content:center;display:none;" data-i18n="app.group.banner_edit_btn">
+              <span data-i18n="app.group.banner_edit">Change banner</span> <span class="btn__arrow">+</span>
+            </button>
+            <input type="file" id="groupBannerInput" accept="image/*" class="file-input--hidden">
+          </div>
+        </div>
+
+        <div class="profile__grid profile__grid--three group__stats">
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="card--stat__val" id="groupStatMembers">0</span>
+            <span class="card--stat__label" data-i18n="app.group.stats.members">Members</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span class="card--stat__val" id="groupStatVerified">0</span>
+            <span class="card--stat__label" data-i18n="app.group.stats.verified">Verified</span>
+          </div>
+          <div class="card card--stat">
+            <svg class="card--stat__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            <span class="card--stat__val" id="groupStatSessions">0</span>
+            <span class="card--stat__label" data-i18n="app.group.stats.sessions">Sessions</span>
+          </div>
+        </div>
+
+        <div class="live-sessions" id="groupDetailLiveSessions" style="display:none;">
+          <div class="live-sessions__grid" id="groupDetailLiveGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <h2 class="card__title" data-i18n="app.group.members_title">Members</h2>
+          </div>
+          <div id="groupDetailMembers">
+            <div class="empty-state">
+              <span class="empty-state__text" data-i18n="app.group.members_loading">Loading members…</span>
+            </div>
           </div>
         </div>
       </section>
