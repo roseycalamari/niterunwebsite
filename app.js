@@ -173,7 +173,41 @@
       setupNotifications(user);
       setupFriendsCard();
       setupAccountSettings();
+      setupPwaSettings();
+      maybeOfferWalkthrough();
     }
+  }
+
+  /* ---------- PWA / Walkthrough wiring ---------- */
+  function setupPwaSettings() {
+    var installBtn = document.getElementById('settingsInstallBtn');
+    var tourBtn = document.getElementById('settingsTourBtn');
+    var installRow = document.getElementById('settingsInstallRow');
+
+    if (installRow && window.NiteRunPWA && window.NiteRunPWA.alreadyInstalled()) {
+      installRow.style.display = 'none';
+    }
+
+    if (installBtn) {
+      installBtn.addEventListener('click', function () {
+        if (window.NiteRunPWA) window.NiteRunPWA.showInstallCard({ force: true });
+      });
+    }
+    if (tourBtn) {
+      tourBtn.addEventListener('click', function () {
+        if (window.NiteRunWalkthrough) {
+          window.NiteRunWalkthrough.reset();
+          window.NiteRunWalkthrough.show();
+        }
+      });
+    }
+  }
+
+  function maybeOfferWalkthrough() {
+    if (!window.NiteRunWalkthrough) return;
+    setTimeout(function () {
+      try { window.NiteRunWalkthrough.maybeAutoShow(); } catch (e) {}
+    }, 600);
   }
 
   /* ---------- EMPTY STATES (simple next-step buttons) ---------- */
@@ -1120,6 +1154,8 @@
   var groupMembersForGid = '';
   var groupSessionsUnsub = null;
   var groupSessionsForGid = '';
+  var groupDocUnsub = null;
+  var groupDocForGid = '';
 
   function stopGroupMembersListener() {
     if (groupMembersUnsub) groupMembersUnsub();
@@ -1133,15 +1169,136 @@
     groupSessionsForGid = '';
   }
 
+  function stopGroupDocListener() {
+    if (groupDocUnsub) groupDocUnsub();
+    groupDocUnsub = null;
+    groupDocForGid = '';
+  }
+
+  // Live listener on the group document: keeps bannerURL, name, counts, etc. in sync.
+  // Without this, the cached `officialGroups` array can go stale (e.g. after a banner upload)
+  // and the group detail page would show no banner on revisit.
+  function listenGroupDoc(gid) {
+    if (!db || !gid) return;
+    if (groupDocForGid === gid && groupDocUnsub) return;
+    stopGroupDocListener();
+    groupDocForGid = gid;
+    groupDocUnsub = db.collection('groups').doc(gid).onSnapshot(function (doc) {
+      if (!doc.exists) return;
+      var g = doc.data() || {};
+
+      // Update the cache entry in-place so other views (groups list) also stay fresh.
+      var idx = -1;
+      for (var i = 0; i < officialGroups.length; i++) {
+        if (officialGroups[i] && officialGroups[i].id === gid) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        var prev = officialGroups[idx] || {};
+        officialGroups[idx] = {
+          id: gid,
+          name: g.name || prev.name || 'Group',
+          joinCode: g.joinCode || prev.joinCode || '',
+          isVerified: !!g.isVerified,
+          memberCount: g.memberCount || 0,
+          verifiedMemberCount: g.verifiedMemberCount || 0,
+          createdAt: g.createdAt || prev.createdAt || null,
+          bannerURL: g.bannerURL || null,
+          myRole: prev.myRole || 'member'
+        };
+      }
+
+      if (selectedGroup && selectedGroup.id === gid) {
+        selectedGroup.name = g.name || selectedGroup.name;
+        selectedGroup.bannerURL = g.bannerURL || null;
+        selectedGroup.memberCount = g.memberCount || 0;
+        selectedGroup.verifiedMemberCount = g.verifiedMemberCount || 0;
+        selectedGroup.isVerified = !!g.isVerified;
+        selectedGroup.createdAt = g.createdAt || selectedGroup.createdAt;
+      }
+
+      // Refresh visible UI if we're still on the group view
+      if (selectedGroupId === gid) renderGroupDetailHeader();
+    }, function (err) {
+      console.error('Group doc listener error:', err);
+    });
+  }
+
   function openGroupDetail(gid) {
     if (!currentUser || !db || !gid) return;
     selectedGroupId = gid;
     selectedGroup = officialGroups.find(function (x) { return x.id === gid; }) || selectedGroup || null;
     switchView('group');
     renderGroupDetailHeader();
+    listenGroupDoc(gid);
     listenGroupLiveSessions(currentUser, gid);
     listenGroupMembers(gid);
     listenGroupSessionsCount(gid);
+    loadGroupSessionHistory(gid);
+  }
+
+  function loadGroupSessionHistory(gid) {
+    if (typeof db === 'undefined' || !db || !gid) return;
+    var container = document.getElementById('groupSessionHistory');
+    if (!container) return;
+
+    db.collection('sessions')
+      .where('groupId', '==', gid)
+      .where('status', '==', 'closed')
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get()
+      .then(function (snap) {
+        if (snap.empty) {
+          container.innerHTML =
+            '<div class="empty-state">' +
+              '<svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+              '<span class="empty-state__text" data-i18n="app.group.sessions_empty_title">No sessions yet</span>' +
+              '<span class="empty-state__sub" data-i18n="app.group.sessions_empty_sub">Saved official sessions will show up here</span>' +
+            '</div>';
+          if (typeof window.applyTranslations === 'function') window.applyTranslations(container);
+          return;
+        }
+
+        var html = '<div class="shist">';
+        snap.forEach(function (doc) {
+          var s = doc.data();
+          var dateStr = '';
+          if (s.date) {
+            var parts = s.date.split('-');
+            if (parts.length === 3) dateStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+          }
+          if (s.time) dateStr += (dateStr ? ' · ' : '') + s.time;
+          var venue = s.venue || '';
+
+          var teamsSummary = '';
+          if (s.teams && s.teams.length > 0) {
+            teamsSummary = s.teams.map(function (t) {
+              return t.name + ' (' + (t.players ? t.players.length : 0) + ')';
+            }).join(' vs ');
+          }
+
+          var mvpHtml = s.mvp ? '<span class="shist__mvp">MVP: ' + escapeHtml(s.mvp) + '</span>' : '';
+
+          html +=
+            '<div class="shist__item">' +
+              '<div class="shist__head">' +
+                '<span class="shist__date">' + escapeHtml(dateStr || '—') + '</span>' +
+                (venue ? '<span class="shist__venue">' + escapeHtml(venue) + '</span>' : '') +
+              '</div>' +
+              (teamsSummary ? '<div class="shist__teams">' + escapeHtml(teamsSummary) + '</div>' : '') +
+              mvpHtml +
+            '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      })
+      .catch(function (err) {
+        console.warn('[group history] failed', err);
+        container.innerHTML =
+          '<div class="empty-state">' +
+            '<span class="empty-state__text">Could not load sessions.</span>' +
+          '</div>';
+      });
   }
 
   function renderGroupDetailHeader() {
@@ -1269,23 +1426,78 @@
       return;
     }
     if (!db) return;
+    if (!currentUser || !currentUser.uid) return;
 
     var path = 'group-banners/' + gid + '/banner.jpg';
     var ref = storage.ref().child(path);
 
-    ref.put(blob, { contentType: 'image/jpeg' })
+    // Optimistic UI: show banner immediately from the blob
+    try {
+      var bannerEl = document.getElementById('groupBanner');
+      if (bannerEl) {
+        var tmpUrl = URL.createObjectURL(blob);
+        bannerEl.style.backgroundImage = 'url("' + tmpUrl.replace(/"/g, '\\"') + '")';
+        setTimeout(function () {
+          try { URL.revokeObjectURL(tmpUrl); } catch (e2) {}
+        }, 60000);
+      }
+    } catch (e) {}
+
+    // Extra guard: confirm this user is admin of this group.
+    db.collection('groups').doc(gid).collection('members').doc(currentUser.uid).get().then(function (doc) {
+      var role = doc.exists ? String((doc.data() || {}).role || '') : '';
+      if (role !== 'admin') {
+        var err = new Error('Not admin');
+        err.code = 'niterun/not-admin';
+        throw err;
+      }
+
+      try {
+        console.log('[Group banner upload] bucket=', ref.bucket, 'path=', path, 'uid=', currentUser.uid, 'gid=', gid);
+      } catch (e) {}
+
+      return ref.put(blob, { contentType: 'image/jpeg' });
+    })
       .then(function (snapshot) {
         return snapshot.ref.getDownloadURL();
       })
       .then(function (url) {
-        return db.collection('groups').doc(gid).update({ bannerURL: url });
+        // Persist the URL on the group doc so the banner survives navigation/reload.
+        return db.collection('groups').doc(gid).update({ bannerURL: url })
+          .then(function () { return url; })
+          .catch(function (err) {
+            err = err || new Error('Failed to save banner');
+            err.code = err.code || 'niterun/banner-save-failed';
+            throw err;
+          });
       })
-      .then(function () {
+      .then(function (url) {
+        // Update local cache so UI refreshes without reload
+        try {
+          var found = false;
+          officialGroups.forEach(function (og) {
+            if (og && og.id === gid) { og.bannerURL = url; found = true; }
+          });
+          if (!found) {
+            // Cache didn't have this group yet — push a stub so renders are immediate.
+            officialGroups.push({ id: gid, bannerURL: url });
+          }
+          if (selectedGroup && selectedGroup.id === gid) selectedGroup.bannerURL = url;
+          renderGroupDetailHeader();
+        } catch (e2) {}
         showToast(t('toast.group_banner_updated'), 'success');
       })
       .catch(function (err) {
         console.error('Group banner upload error:', err);
         var c = err && err.code ? String(err.code) : '';
+        if (c === 'niterun/not-admin') {
+          showToast(t('toast.error.permission') || 'Not allowed.', 'info');
+          return;
+        }
+        if (c === 'niterun/banner-save-failed' || c === 'permission-denied') {
+          showToast(t('toast.error.permission') || 'Could not save banner. Please try again.', 'info');
+          return;
+        }
         if (c === 'storage/unauthorized' || c === 'storage/unauthenticated') {
           showToast(t('toast.error.permission') || 'Not allowed.', 'info');
         } else if (c === 'storage/canceled') {
@@ -1347,8 +1559,12 @@
     groupMembersUnsub = db.collection('groups').doc(gid).collection('members')
       .orderBy('joinedAt', 'desc')
       .onSnapshot(function (snapshot) {
+        var g = officialGroups.find(function (x) { return x.id === gid; }) || selectedGroup || null;
+        var iAmAdmin = !!(g && g.myRole === 'admin');
+
         var rows = [];
         snapshot.forEach(function (doc) {
+          var memberId = doc.id;
           var d = doc.data() || {};
           var nm = d.displayName || 'Player';
           var role = d.role === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
@@ -1358,6 +1574,14 @@
             ? ('<img class="member-row__avatar-img" src="' + escapeHtml(photo) + '" alt="">')
             : escapeHtml(initial);
           var isAdmin = d.role === 'admin';
+
+          var canPromote = iAmAdmin && !isAdmin && memberId !== currentUser.uid;
+          var actionsHtml = canPromote
+            ? '<button type="button" class="member-row__promote" data-promote-uid="' + escapeHtml(memberId) + '">' +
+                escapeHtml(t('app.group.member.make_admin')) +
+              '</button>'
+            : '';
+
           rows.push(
             '<div class="member-row' + (isAdmin ? ' member-row--admin' : '') + '">' +
               '<div class="member-row__left">' +
@@ -1367,6 +1591,7 @@
                   '<div class="member-row__role">' + (isAdmin ? ('<span class="member-row__admin-badge">★ ' + escapeHtml(role) + '</span>') : escapeHtml(role)) + '</div>' +
                 '</div>' +
               '</div>' +
+              (actionsHtml ? '<div class="member-row__actions">' + actionsHtml + '</div>' : '') +
             '</div>'
           );
         });
@@ -1380,8 +1605,48 @@
         }
 
         wrap.innerHTML = rows.join('');
+
+        wrap.querySelectorAll('[data-promote-uid]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var uid = btn.getAttribute('data-promote-uid');
+            if (!uid) return;
+            promoteMemberToAdmin(gid, uid, btn);
+          });
+        });
       }, function (err) {
         console.error('Members listener error:', err);
+      });
+  }
+
+  function promoteMemberToAdmin(gid, uid, btn) {
+    if (!currentUser || !db || !gid || !uid) return;
+
+    var memberName = '';
+    try {
+      var nameEl = btn.closest('.member-row').querySelector('.member-row__name');
+      if (nameEl) memberName = nameEl.textContent || '';
+    } catch (e) { memberName = ''; }
+
+    var prompt = t('app.group.member.confirm_make_admin', { name: memberName || t('app.unknown') });
+    if (!window.confirm(prompt)) return;
+
+    btn.disabled = true;
+    var originalLabel = btn.textContent;
+    btn.textContent = t('app.group.member.promoting');
+
+    db.collection('groups').doc(gid).collection('members').doc(uid)
+      .update({ role: 'admin' })
+      .then(function () {
+        showToast(t('toast.member_promoted', { name: memberName || t('app.unknown') }), 'success');
+      })
+      .catch(function (err) {
+        console.error('Promote member failed:', err);
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        var msg = (err && err.code === 'permission-denied')
+          ? t('toast.member_promote_no_permission')
+          : t('toast.member_promote_failed');
+        showToast(msg, 'error');
       });
   }
 
@@ -2694,8 +2959,10 @@
       stopGroupLiveSessions();
       stopGroupMembersListener();
       stopGroupSessionsCount();
+      stopGroupDocListener();
     } else if (currentUser && selectedGroupId) {
       renderGroupDetailHeader();
+      listenGroupDoc(selectedGroupId);
       listenGroupLiveSessions(currentUser, selectedGroupId);
       listenGroupMembers(selectedGroupId);
       listenGroupSessionsCount(selectedGroupId);
