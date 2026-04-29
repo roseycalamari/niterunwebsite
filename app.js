@@ -3485,6 +3485,8 @@
     tabbarBtns.forEach(function (btn) {
       btn.classList.toggle('tabbar__btn--active', btn.getAttribute('data-view') === sidebarTarget);
     });
+    // Slide the highlight pill to the new active button
+    updateTabbarPill();
 
     /* Update page title */
     if (els.pageTitle) els.pageTitle.textContent = viewTitles[viewName] || 'Dashboard';
@@ -3566,6 +3568,36 @@
         switchView(logo.getAttribute('data-view'));
       });
     });
+
+    // Position the floating tabbar's highlight pill on first paint and on resize/orientation.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateTabbarPill);
+      window.addEventListener('orientationchange', updateTabbarPill);
+      // Run after layout settles (fonts/icons could shift widths slightly)
+      requestAnimationFrame(updateTabbarPill);
+      setTimeout(updateTabbarPill, 200);
+    }
+  }
+
+  // Slides the floating-pill highlight to whichever tabbar button is currently active.
+  // Uses translateX + width (instead of left) so transitions are GPU-accelerated.
+  function updateTabbarPill() {
+    var tabbar = document.getElementById('tabbar');
+    var pill = document.getElementById('tabbarPill');
+    if (!tabbar || !pill) return;
+    // Don't animate if the tabbar isn't visible (e.g. desktop layout) — saves work and
+    // avoids an initial jump if the user resizes from desktop down to mobile.
+    if (window.getComputedStyle(tabbar).display === 'none') return;
+
+    var active = tabbar.querySelector('.tabbar__btn--active');
+    if (!active) return;
+
+    // Use offsetLeft/offsetWidth (in CSS pixels) for stable positioning that
+    // doesn't drift across rerenders.
+    var x = active.offsetLeft;
+    var w = active.offsetWidth;
+    pill.style.transform = 'translateX(' + x + 'px)';
+    pill.style.width = w + 'px';
   }
 
   /* ---------- HUB PANELS (dashboard → sub-views) ---------- */
