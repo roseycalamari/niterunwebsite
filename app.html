@@ -736,6 +736,16 @@
               <label class="toggle__track" for="toggleNotifs"></label>
             </div>
           </div>
+          <div class="setting-row" id="rowPushNotifs">
+            <div class="setting-row__text">
+              <span class="setting-row__label" data-i18n="app.settings.push_notifications">Push notifications</span>
+              <span class="setting-row__desc" id="pushNotifsDesc" data-i18n="app.settings.push_notifications_desc">Live alerts on your phone or computer.</span>
+            </div>
+            <div class="toggle">
+              <input type="checkbox" class="toggle__input" id="togglePushNotifs">
+              <label class="toggle__track" for="togglePushNotifs"></label>
+            </div>
+          </div>
           <div class="setting-row">
             <div class="setting-row__text">
               <span class="setting-row__label" data-i18n="app.settings.email_notifications">Email notifications</span>
@@ -866,8 +876,8 @@
       <p class="modal__message" id="modalMessage" style="display:none"></p>
       <input class="modal__input" type="text" id="modalInput" autocomplete="off" style="display:none">
       <div class="modal__actions">
-        <button class="btn btn--secondary btn--sm" id="modalCancel">Cancel</button>
-        <button class="btn btn--primary btn--sm" id="modalConfirm">Confirm</button>
+        <button class="btn btn--secondary btn--sm" id="modalCancel" data-i18n="app.actions.cancel">Cancel</button>
+        <button class="btn btn--primary btn--sm" id="modalConfirm" data-i18n="app.actions.confirm">Confirm</button>
       </div>
     </div>
   </div>
@@ -878,7 +888,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="error-logger.js"></script>
+  <script src="push.js" defer></script>
 
   <script src="app.js"></script>
 </body>

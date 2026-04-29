@@ -84,6 +84,11 @@ function isThirdPartyOrApi(url) {
   return /firestore\.googleapis|firebase|google\.com|gstatic\.com|googleapis\.com|cloudfunctions/.test(url.host);
 }
 
+function isServiceWorkerFile(url) {
+  // Never intercept other service-worker scripts — they must always update from the network.
+  return /\/(service-worker|firebase-messaging-sw)\.js$/.test(url.pathname);
+}
+
 /* -------- Fetch routing -------- */
 self.addEventListener('fetch', (event) => {
   const req = event.request;
@@ -93,6 +98,10 @@ self.addEventListener('fetch', (event) => {
 
   if (isThirdPartyOrApi(url)) {
     return;
+  }
+
+  if (isServiceWorkerFile(url)) {
+    return; // let the browser fetch fresh
   }
 
   if (isNavigationRequest(req) || isAppCode(url)) {

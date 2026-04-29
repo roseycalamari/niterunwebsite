@@ -161,7 +161,10 @@
     document.addEventListener('niterun:lang', function () {
       renderMilestonesUI();
       updatePlayerNameFieldCopy();
+      persistUserLang();
     });
+    // Also persist on first load so server-side push uses the right language.
+    persistUserLang();
 
     if (user) {
       populateUserInfo(user);
@@ -175,6 +178,8 @@
       setupAccountSettings();
       setupPwaSettings();
       maybeOfferWalkthrough();
+      // Re-subscribe to push (refreshes the FCM token if it rotated; saves it to Firestore).
+      try { window.NiteRunPush && window.NiteRunPush.autoResubscribe(user); } catch (e) {}
     }
   }
 
@@ -208,6 +213,117 @@
     setTimeout(function () {
       try { window.NiteRunWalkthrough.maybeAutoShow(); } catch (e) {}
     }, 600);
+  }
+
+  // Save the user's currently-selected language to their Firestore doc so the
+  // Cloud Function that sends push notifications knows which language to use.
+  function persistUserLang() {
+    try {
+      if (!currentUser || typeof db === 'undefined' || !db) return;
+      var raw = '';
+      try { raw = (localStorage.getItem('niterun_lang') || '').toLowerCase(); } catch (e) {}
+      var lang = raw.indexOf('pt') === 0 ? 'pt' : 'en';
+      db.collection('users').doc(currentUser.uid).update({ lang: lang }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---------- PUSH NOTIFICATIONS TOGGLE ---------- */
+  function setupPushNotificationsToggle() {
+    var toggle = document.getElementById('togglePushNotifs');
+    var desc = document.getElementById('pushNotifsDesc');
+    var row = document.getElementById('rowPushNotifs');
+    if (!toggle || !row) return;
+
+    var Push = window.NiteRunPush;
+
+    function setDesc(key) {
+      if (!desc) return;
+      desc.textContent = t(key) || desc.textContent;
+      desc.setAttribute('data-i18n', key);
+    }
+
+    // Detect support / configuration
+    if (!Push || !Push.isSupported()) {
+      toggle.disabled = true;
+      toggle.checked = false;
+      setDesc('app.settings.push_notifications_unsupported');
+      return;
+    }
+
+    if (!Push.vapidConfigured()) {
+      // Push code is in place but VAPID key isn't set yet — hide the row to avoid confusion.
+      row.style.display = 'none';
+      return;
+    }
+
+    // iOS PWA push only works when the user has installed to home screen (iOS 16.4+).
+    // If we're on iOS Safari without standalone, show a hint.
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    var isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+      toggle.disabled = true;
+      toggle.checked = false;
+      setDesc('app.settings.push_notifications_install_first');
+      return;
+    }
+
+    // Initial state from browser permission + Firestore preference
+    function refreshState() {
+      var perm = Push.permission();
+      if (perm === 'denied') {
+        toggle.checked = false;
+        toggle.disabled = false;
+        setDesc('app.settings.push_notifications_blocked');
+        return;
+      }
+      if (currentUser && db) {
+        db.collection('users').doc(currentUser.uid).get().then(function (doc) {
+          var pref = doc.exists ? doc.data().pushNotifications : false;
+          toggle.checked = !!pref && perm === 'granted';
+          setDesc('app.settings.push_notifications_desc');
+        }).catch(function () {
+          toggle.checked = perm === 'granted';
+          setDesc('app.settings.push_notifications_desc');
+        });
+      } else {
+        toggle.checked = perm === 'granted';
+        setDesc('app.settings.push_notifications_desc');
+      }
+    }
+
+    refreshState();
+
+    toggle.addEventListener('change', function () {
+      var wantOn = toggle.checked;
+
+      if (wantOn) {
+        Push.requestAndSubscribe().then(function (res) {
+          if (res && res.ok) {
+            if (currentUser && db) {
+              db.collection('users').doc(currentUser.uid).update({ pushNotifications: true }).catch(function () {});
+            }
+            showToast(t('toast.push_notifications_on'), 'success');
+            setDesc('app.settings.push_notifications_desc');
+          } else {
+            toggle.checked = false;
+            if (res && res.reason === 'denied') {
+              showToast(t('toast.push_notifications_blocked'), 'info');
+              setDesc('app.settings.push_notifications_blocked');
+            } else {
+              showToast(t('toast.something_went_wrong') || 'Something went wrong.', 'info');
+            }
+          }
+        });
+      } else {
+        Push.unsubscribe().finally(function () {
+          if (currentUser && db) {
+            db.collection('users').doc(currentUser.uid).update({ pushNotifications: false }).catch(function () {});
+          }
+          showToast(t('toast.push_notifications_off'), 'info');
+        });
+      }
+    });
   }
 
   /* ---------- EMPTY STATES (simple next-step buttons) ---------- */
@@ -979,12 +1095,18 @@
     }
 
     // Load groups list from the user's `groupIds` array (populated on join/create).
+    // Cache the previous serialized groupIds so we only re-fetch when membership actually changes
+    // (avoiding wasted Firestore reads when other user fields change like avatar, mvpCount, etc.).
+    var lastGroupIdsKey = null;
     db.collection('users').doc(user.uid).onSnapshot(function (doc) {
       var groupIds = [];
       if (doc.exists) {
         var d = doc.data() || {};
         if (Array.isArray(d.groupIds)) groupIds = d.groupIds.slice();
       }
+      var key = groupIds.slice().sort().join('|');
+      if (key === lastGroupIdsKey) return;
+      lastGroupIdsKey = key;
       loadOfficialGroups(groupIds);
     });
   }
@@ -1001,6 +1123,9 @@
       updateConfirmButtonState();
       return;
     }
+
+    // Show skeleton placeholders while we fetch the groups in parallel
+    showGroupsSkeleton(Math.min(groupIds.length, 4));
 
     var pending = groupIds.length;
     var results = [];
@@ -1057,9 +1182,38 @@
     if (selectedGroupId) els.officialGroupSelect.value = selectedGroupId;
   }
 
+  // Skeleton placeholder for groups list while data is fetched.
+  function showGroupsSkeleton(count) {
+    if (!els.groupsList) return;
+    if (els.groupsEmpty) els.groupsEmpty.style.display = 'none';
+    // Remove any prior real items or skeletons
+    var prior = els.groupsList.querySelectorAll('.group-item, .skel-row');
+    prior.forEach(function (n) { n.remove(); });
+    var n = Math.max(1, Math.min(6, count || 3));
+    for (var i = 0; i < n; i++) {
+      var row = document.createElement('div');
+      row.className = 'skel-row';
+      row.innerHTML =
+        '<div class="skel skel-avatar"></div>' +
+        '<div class="skel-lines">' +
+          '<div class="skel skel-line skel-line--med"></div>' +
+          '<div class="skel skel-line skel-line--short"></div>' +
+        '</div>' +
+        '<div class="skel skel-pill"></div>';
+      els.groupsList.appendChild(row);
+    }
+  }
+
+  function clearGroupsSkeleton() {
+    if (!els.groupsList) return;
+    var sk = els.groupsList.querySelectorAll('.skel-row');
+    sk.forEach(function (n) { n.remove(); });
+  }
+
   function renderOfficialGroups() {
     if (!els.groupsList) return;
 
+    clearGroupsSkeleton();
     var items = els.groupsList.querySelectorAll('.group-item');
     items.forEach(function (item) { item.remove(); });
 
@@ -1164,7 +1318,9 @@
   }
 
   function stopGroupSessionsCount() {
-    if (groupSessionsUnsub) groupSessionsUnsub();
+    // sessions-count is now a one-shot .get() (no live listener), so we just clear the gid guard
+    // to allow a fresh fetch on the next visit.
+    if (groupSessionsUnsub) { try { groupSessionsUnsub(); } catch (e) {} }
     groupSessionsUnsub = null;
     groupSessionsForGid = '';
   }
@@ -1240,6 +1396,8 @@
     if (typeof db === 'undefined' || !db || !gid) return;
     var container = document.getElementById('groupSessionHistory');
     if (!container) return;
+
+    container.innerHTML = renderSessionHistorySkeleton(3);
 
     db.collection('sessions')
       .where('groupId', '==', gid)
@@ -1521,18 +1679,24 @@
       return;
     }
 
-    if (groupSessionsForGid === gid && groupSessionsUnsub) return;
+    if (groupSessionsForGid === gid) return;
     stopGroupSessionsCount();
     groupSessionsForGid = gid;
 
-    // Total sessions for this group (any status). We order by createdAt so Firestore can use an index.
-    groupSessionsUnsub = db.collection('sessions')
+    // One-time fetch instead of snapshot listener: total session count rarely needs to be realtime,
+    // and an open listener over `sessions where groupId==gid` reads every doc on every change.
+    // We refresh on each visit to the group detail page (via openGroupDetail).
+    db.collection('sessions')
       .where('groupId', '==', gid)
       .orderBy('createdAt', 'desc')
-      .onSnapshot(function (snap) {
+      .get()
+      .then(function (snap) {
+        if (groupSessionsForGid !== gid) return; // user navigated away
         el.textContent = String(snap.size || 0);
-      }, function (err) {
+      })
+      .catch(function (err) {
         console.error('Group sessions count error:', err);
+        el.textContent = '0';
       });
   }
 
@@ -1551,10 +1715,20 @@
     stopGroupMembersListener();
     groupMembersForGid = gid;
 
-    wrap.innerHTML =
-      '<div class="empty-state">' +
-        '<span class="empty-state__text">' + escapeHtml(t('app.group.members_loading')) + '</span>' +
-      '</div>';
+    // Skeleton placeholders for members
+    var skelHtml = '<div class="skel-list">';
+    for (var i = 0; i < 3; i++) {
+      skelHtml += '<div class="skel-row">' +
+        '<div class="skel skel-avatar"></div>' +
+        '<div class="skel-lines">' +
+          '<div class="skel skel-line skel-line--med"></div>' +
+          '<div class="skel skel-line skel-line--short"></div>' +
+        '</div>' +
+        '<div class="skel skel-pill"></div>' +
+        '</div>';
+    }
+    skelHtml += '</div>';
+    wrap.innerHTML = skelHtml;
 
     groupMembersUnsub = db.collection('groups').doc(gid).collection('members')
       .orderBy('joinedAt', 'desc')
@@ -1707,6 +1881,7 @@
         });
       }).catch(function (err) {
         console.error('Create group error:', err);
+        try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'createGroup'); } catch (e2) {}
         var msg = t('toast.group_create_failed');
         var c = err && err.code ? String(err.code) : '';
         if (c === 'permission-denied') msg = t('toast.error.permission');
@@ -1781,6 +1956,7 @@
       });
     }).catch(function (err) {
       console.error('Join group error:', err);
+      try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'joinGroup'); } catch (e2) {}
       var msg = t('toast.group_join_failed');
       var c = err && err.code ? String(err.code) : '';
       if (c === 'permission-denied') msg = t('toast.error.permission');
@@ -1862,11 +2038,28 @@
   }
 
   /* ---------- SESSION HISTORY ---------- */
+  function renderSessionHistorySkeleton(count) {
+    var n = Math.max(1, Math.min(6, count || 3));
+    var html = '<div class="skel-list">';
+    for (var i = 0; i < n; i++) {
+      html += '<div class="skel-row">' +
+        '<div class="skel-lines">' +
+          '<div class="skel skel-line skel-line--med"></div>' +
+          '<div class="skel skel-line skel-line--long"></div>' +
+        '</div>' +
+        '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function loadSessionHistory(uid, containerId) {
     if (typeof db === 'undefined' || !db) return;
 
     var container = document.getElementById(containerId);
     if (!container) return;
+
+    container.innerHTML = renderSessionHistorySkeleton(3);
 
     var creatorQuery = db.collection('sessions')
       .where('creatorId', '==', uid)
@@ -2100,6 +2293,8 @@
 
     if (notifUnsub) notifUnsub();
 
+    showNotifSkeleton();
+
     notifUnsub = db.collection('users').doc(uid).collection('notifications')
       .orderBy('createdAt', 'desc')
       .limit(20)
@@ -2109,7 +2304,62 @@
           notifs.push({ id: doc.id, data: doc.data() });
         });
         renderNotifications(notifs);
+      }, function (err) {
+        console.error('Notifications listener error:', err);
+        var list = document.getElementById('notifList');
+        if (list) list.innerHTML = '<p class="notif-dropdown__empty">' + escapeHtml(t('app.notifications.empty')) + '</p>';
       });
+  }
+
+  function showNotifSkeleton() {
+    var list = document.getElementById('notifList');
+    if (!list) return;
+    var html = '<div class="skel-list" style="padding:8px 12px;">';
+    for (var i = 0; i < 3; i++) {
+      html += '<div class="skel-row" style="padding:10px;">' +
+        '<div class="skel skel-avatar"></div>' +
+        '<div class="skel-lines">' +
+          '<div class="skel skel-line skel-line--med"></div>' +
+          '<div class="skel skel-line skel-line--short"></div>' +
+        '</div>' +
+        '</div>';
+    }
+    html += '</div>';
+    list.innerHTML = html;
+  }
+
+  // Build a localized notification message from the stored type + structured fields.
+  // Falls back to the legacy stored `message` (older notifs) or a generic key.
+  function localizeNotif(d) {
+    if (!d) return '';
+    var type = d.type || '';
+    var name = d.fromName || t('app.someone');
+    var venue = d.venue || '';
+    var mvp = d.mvpName || t('app.notifications.na') || 'N/A';
+
+    if (type === 'friend_request') {
+      return t('notif.friend_request', { name: name });
+    }
+    if (type === 'friend_accepted') {
+      return t('notif.friend_accepted', { name: name });
+    }
+    if (type === 'mvp_award') {
+      return venue
+        ? t('notif.mvp_award.with_venue', { venue: venue })
+        : t('notif.mvp_award.no_venue');
+    }
+    if (type === 'session_closed') {
+      return venue
+        ? t('notif.session_closed.with_venue', { venue: venue, mvp: mvp })
+        : t('notif.session_closed.no_venue', { mvp: mvp });
+    }
+    if (type === 'session_invite') {
+      return venue
+        ? t('notif.session_invite.with_venue', { name: name, venue: venue })
+        : t('notif.session_invite.no_venue', { name: name });
+    }
+    // Legacy notifications (or unknown future types) — show whatever was stored
+    return d.message || t('notif.fallback.unknown') || '';
   }
 
   function renderNotifications(notifs) {
@@ -2141,7 +2391,7 @@
       html += '<div class="notif-item' + readClass + '" data-notif-id="' + n.id + '">';
       html += '<div class="notif-item__avatar">' + avatarHtml + '</div>';
       html += '<div class="notif-item__body">';
-      html += '<p class="notif-item__msg">' + escapeHtml(d.message || '') + '</p>';
+      html += '<p class="notif-item__msg">' + escapeHtml(localizeNotif(d)) + '</p>';
 
       if (d.type === 'friend_request' && !d.acted) {
         html += '<div class="notif-item__actions">' +
@@ -2701,6 +2951,9 @@
         });
       });
     }
+
+    /* Push notifications toggle (FCM) */
+    setupPushNotificationsToggle();
 
     /* Email notifications toggle */
     if (emailNotifsToggle && currentUser && typeof db !== 'undefined' && db) {
@@ -3905,6 +4158,7 @@
         updateConfirmButtonState();
       } catch (err) {
         console.error('Team generation failed:', err);
+        try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'generateTeams'); } catch (e2) {}
         if (els.generateLoading) els.generateLoading.style.display = 'none';
         if (els.generateBtn) els.generateBtn.disabled = false;
         showToast(t('toast.something_went_wrong') || 'Something went wrong.', 'danger');
@@ -3985,6 +4239,7 @@
       notifySessionInvites(invitedUids, venue);
     }).catch(function (err) {
       console.error('Failed to save session:', err);
+      try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'saveSession'); } catch (e2) {}
       var msg = t('toast.session_save_failed');
       var c = err && err.code ? String(err.code) : '';
       if (c === 'permission-denied') msg = t('toast.session_save_permission');
@@ -4211,7 +4466,7 @@
       input.value = '';
     }
     if (confirmBtn) {
-      confirmBtn.textContent = opts.confirmText || 'Confirm';
+      confirmBtn.textContent = opts.confirmText || t('app.actions.confirm') || 'Confirm';
       confirmBtn.className = opts.danger ? 'btn btn--danger btn--sm' : 'btn btn--primary btn--sm';
     }
     modalCallback = opts.onConfirm || null;

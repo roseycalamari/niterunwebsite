@@ -5,6 +5,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { getStorage } = require("firebase-admin/storage");
+const { getMessaging } = require("firebase-admin/messaging");
 const { Resend } = require("resend");
 const crypto = require("crypto");
 
@@ -660,3 +661,199 @@ exports.confirmAccountDeletion = onRequest(
       .send(deleteAccountResultPage("Something went wrong", "We could not finish deleting the account. Please try again or contact support.", false));
   }
 });
+
+/* ----------------------------------------------------------
+   Cloud Function: send Web Push on new notification
+   Trigger: users/{userId}/notifications/{notifId} created.
+
+   Reads the user's stored FCM tokens, builds a localized title/body
+   from the notification's `type` + structured fields, and dispatches
+   a push to every device. Invalid tokens are cleaned up automatically.
+   ---------------------------------------------------------- */
+
+const PUSH_I18N = {
+  en: {
+    appName: "Nite-Run",
+    "friend_request.title": "New friend request",
+    "friend_request.body": "{{name}} wants to be your friend",
+    "friend_accepted.title": "Friend request accepted",
+    "friend_accepted.body": "{{name}} accepted your friend request",
+    "mvp_award.title": "You're MVP! 🏆",
+    "mvp_award.body_with_venue": "You were voted MVP at {{venue}}!",
+    "mvp_award.body_no_venue": "You were voted MVP!",
+    "session_closed.title": "Session ended",
+    "session_closed.body_with_venue": "Session at {{venue}} ended. MVP: {{mvp}}",
+    "session_closed.body_no_venue": "Session ended. MVP: {{mvp}}",
+    "session_invite.title": "Session invite",
+    "session_invite.body_with_venue": "{{name}} added you to a session at {{venue}}",
+    "session_invite.body_no_venue": "{{name}} added you to a session",
+    "fallback.title": "Nite-Run",
+    "fallback.body": "You have a new notification",
+  },
+  pt: {
+    appName: "Nite-Run",
+    "friend_request.title": "Novo pedido de amizade",
+    "friend_request.body": "{{name}} quer ser teu amigo",
+    "friend_accepted.title": "Pedido de amizade aceite",
+    "friend_accepted.body": "{{name}} aceitou o teu pedido de amizade",
+    "mvp_award.title": "És MVP! 🏆",
+    "mvp_award.body_with_venue": "Foste eleito MVP em {{venue}}!",
+    "mvp_award.body_no_venue": "Foste eleito MVP!",
+    "session_closed.title": "Sessão terminada",
+    "session_closed.body_with_venue": "A sessão em {{venue}} terminou. MVP: {{mvp}}",
+    "session_closed.body_no_venue": "A sessão terminou. MVP: {{mvp}}",
+    "session_invite.title": "Convite para sessão",
+    "session_invite.body_with_venue": "{{name}} adicionou-te a uma sessão em {{venue}}",
+    "session_invite.body_no_venue": "{{name}} adicionou-te a uma sessão",
+    "fallback.title": "Nite-Run",
+    "fallback.body": "Tens uma nova notificação",
+  },
+};
+
+function pushT(lang, key, params) {
+  const dict = PUSH_I18N[lang] || PUSH_I18N.en;
+  let str = dict[key] || PUSH_I18N.en[key] || "";
+  if (params) {
+    Object.keys(params).forEach((p) => {
+      str = str.replace(new RegExp(`{{\\s*${p}\\s*}}`, "g"), params[p] == null ? "" : String(params[p]));
+    });
+  }
+  return str;
+}
+
+function buildPushPayload(notif, lang) {
+  const type = notif.type || "";
+  const name = notif.fromName || "";
+  const venue = notif.venue || "";
+  const mvp = notif.mvpName || "";
+
+  let title;
+  let body;
+
+  switch (type) {
+    case "friend_request":
+      title = pushT(lang, "friend_request.title");
+      body = pushT(lang, "friend_request.body", { name });
+      break;
+    case "friend_accepted":
+      title = pushT(lang, "friend_accepted.title");
+      body = pushT(lang, "friend_accepted.body", { name });
+      break;
+    case "mvp_award":
+      title = pushT(lang, "mvp_award.title");
+      body = venue
+        ? pushT(lang, "mvp_award.body_with_venue", { venue })
+        : pushT(lang, "mvp_award.body_no_venue");
+      break;
+    case "session_closed":
+      title = pushT(lang, "session_closed.title");
+      body = venue
+        ? pushT(lang, "session_closed.body_with_venue", { venue, mvp })
+        : pushT(lang, "session_closed.body_no_venue", { mvp });
+      break;
+    case "session_invite":
+      title = pushT(lang, "session_invite.title");
+      body = venue
+        ? pushT(lang, "session_invite.body_with_venue", { name, venue })
+        : pushT(lang, "session_invite.body_no_venue", { name });
+      break;
+    default:
+      title = pushT(lang, "fallback.title");
+      body = notif.message || pushT(lang, "fallback.body");
+  }
+
+  return { title, body };
+}
+
+async function pruneInvalidTokens(userId, results, tokenIds) {
+  const removable = [];
+  results.forEach((res, idx) => {
+    if (res.success) return;
+    const code = (res.error && res.error.code) || "";
+    if (
+      code === "messaging/invalid-registration-token" ||
+      code === "messaging/registration-token-not-registered"
+    ) {
+      removable.push(tokenIds[idx]);
+    }
+  });
+  if (!removable.length) return;
+  const batch = db.batch();
+  removable.forEach((id) => {
+    batch.delete(db.collection("users").doc(userId).collection("fcmTokens").doc(id));
+  });
+  try {
+    await batch.commit();
+  } catch (e) {
+    console.warn("Failed to prune invalid tokens:", e);
+  }
+}
+
+exports.sendPushOnNotification = onDocumentCreated(
+  {
+    document: "users/{userId}/notifications/{notifId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const notif = snap.data() || {};
+    const userId = event.params.userId;
+
+    // Respect user preference: skip push if they have it explicitly off.
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) return;
+    const u = userDoc.data() || {};
+    if (u.pushNotifications === false) return;
+
+    const lang = u.lang === "pt" ? "pt" : "en";
+
+    // Collect all device tokens registered for this user.
+    const tokensSnap = await db
+      .collection("users")
+      .doc(userId)
+      .collection("fcmTokens")
+      .get();
+
+    if (tokensSnap.empty) return;
+
+    const tokens = [];
+    const tokenIds = [];
+    tokensSnap.forEach((doc) => {
+      const t = doc.data() && doc.data().token;
+      if (t) {
+        tokens.push(t);
+        tokenIds.push(doc.id);
+      }
+    });
+    if (!tokens.length) return;
+
+    const { title, body } = buildPushPayload(notif, lang);
+
+    const message = {
+      tokens,
+      notification: { title, body },
+      data: {
+        type: String(notif.type || ""),
+        url: "/app.html",
+        notifId: event.params.notifId,
+      },
+      webpush: {
+        fcmOptions: { link: "/app.html" },
+        notification: {
+          icon: "/assets/images/icons/icon-192.png",
+          badge: "/assets/images/icons/icon-192.png",
+          tag: `niterun-${notif.type || "notif"}`,
+          renotify: true,
+        },
+      },
+    };
+
+    try {
+      const resp = await getMessaging().sendEachForMulticast(message);
+      await pruneInvalidTokens(userId, resp.responses, tokenIds);
+    } catch (err) {
+      console.error("Failed to send push:", err);
+    }
+  }
+);

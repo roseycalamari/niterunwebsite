@@ -3039,6 +3039,82 @@ body.dark #view-groups .groups-card__note {
 }
 
 /* ===================================
+   SKELETON LOADING STATES
+   =================================== */
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: rgba(47, 47, 47, 0.08);
+  border-radius: 4px;
+}
+
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 252, 239, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: skelShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skelShimmer {
+  to { transform: translateX(100%); }
+}
+
+.skel-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid rgba(47, 47, 47, 0.1);
+  background: rgba(255, 252, 239, 0.4);
+}
+
+.skel-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.skel-line { height: 10px; }
+.skel-line--short { width: 40%; }
+.skel-line--med   { width: 65%; }
+.skel-line--long  { width: 85%; }
+
+.skel-card {
+  height: 84px;
+  border: 2px solid rgba(47, 47, 47, 0.1);
+  margin-bottom: 10px;
+}
+
+.skel-pill {
+  width: 80px;
+  height: 18px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+body.dark .skel { background: rgba(255, 252, 239, 0.06); }
+body.dark .skel::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 252, 239, 0.12) 50%,
+    transparent 100%
+  );
+}
+body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: transparent; }
+
+/* ===================================
    EMPTY STATES (enhanced)
    =================================== */
 .empty-state {
