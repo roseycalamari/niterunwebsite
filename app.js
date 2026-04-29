@@ -2276,6 +2276,8 @@
     var zoom = document.getElementById('cropperZoom');
     var btnCancel = document.getElementById('cropperCancel');
     var btnConfirm = document.getElementById('cropperConfirm');
+    var btnZoomIn = document.getElementById('cropperZoomIn');
+    var btnZoomOut = document.getElementById('cropperZoomOut');
     if (!overlay || !stage || !canvas || !zoom || !btnCancel || !btnConfirm) {
       // Fallback: no cropper UI in DOM, do plain compress + upload
       compressFileToAvatarBlob(file, 256).then(function (blob) { onConfirm(blob); }).catch(function () {
@@ -2295,6 +2297,8 @@
           zoomEl: zoom,
           btnCancel: btnCancel,
           btnConfirm: btnConfirm,
+          btnZoomIn: btnZoomIn,
+          btnZoomOut: btnZoomOut,
           image: img,
           onConfirm: onConfirm
         });
@@ -2319,10 +2323,20 @@
     var zoomEl = opts.zoomEl;
     var btnCancel = opts.btnCancel;
     var btnConfirm = opts.btnConfirm;
+    var btnZoomIn = opts.btnZoomIn;
+    var btnZoomOut = opts.btnZoomOut;
     var img = opts.image;
 
-    var stageRect = stage.getBoundingClientRect();
-    var size = Math.round(stageRect.width); // square stage
+    // Show overlay first so layout is final, THEN measure the stage.
+    overlay.classList.add('cropper-overlay--active');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    // Always read the stage rect fresh — `getBoundingClientRect()` shifts
+    // when the user scrolls or the keyboard opens.
+    function freshRect() { return stage.getBoundingClientRect(); }
+
+    var initialRect = freshRect();
+    var size = Math.max(1, Math.round(initialRect.width)); // square stage
     canvas.width = size;
     canvas.height = size;
     var ctx = canvas.getContext('2d');
@@ -2416,11 +2430,13 @@
 
     function onPointerMove(e) {
       if (e.touches && e.touches.length === 2 && state.pinchStartDist > 0) {
+        var rect = freshRect();
         var dx = e.touches[0].clientX - e.touches[1].clientX;
         var dy = e.touches[0].clientY - e.touches[1].clientY;
         var dist = Math.sqrt(dx * dx + dy * dy);
-        var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - stageRect.left;
-        var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - stageRect.top;
+        var sx = state.size / Math.max(1, rect.width);
+        var midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * sx;
+        var midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) * sx;
         var newScale = state.pinchStartScale * (dist / state.pinchStartDist);
         setScale(newScale, midX, midY);
         e.preventDefault();
@@ -2442,18 +2458,27 @@
     }
 
     function pointFromEvent(e) {
+      var rect = freshRect();
+      var sx = state.size / Math.max(1, rect.width);
       if (e.touches && e.touches.length) {
-        return { x: e.touches[0].clientX - stageRect.left, y: e.touches[0].clientY - stageRect.top };
+        return {
+          x: (e.touches[0].clientX - rect.left) * sx,
+          y: (e.touches[0].clientY - rect.top) * sx
+        };
       }
-      return { x: e.clientX - stageRect.left, y: e.clientY - stageRect.top };
+      return {
+        x: (e.clientX - rect.left) * sx,
+        y: (e.clientY - rect.top) * sx
+      };
     }
 
     function onWheel(e) {
       e.preventDefault();
       var delta = e.deltaY > 0 ? 0.92 : 1.08;
-      var rect = stage.getBoundingClientRect();
-      var ax = e.clientX - rect.left;
-      var ay = e.clientY - rect.top;
+      var rect = freshRect();
+      var sx = state.size / Math.max(1, rect.width);
+      var ax = (e.clientX - rect.left) * sx;
+      var ay = (e.clientY - rect.top) * sx;
       setScale(state.scale * delta, ax, ay);
     }
 
@@ -2462,6 +2487,15 @@
       var newScale = state.minScale + ((v - 1) / 2) * (state.maxScale - state.minScale);
       setScale(newScale, state.size / 2, state.size / 2);
     }
+
+    function onZoomBtn(direction) {
+      return function () {
+        var step = direction > 0 ? 1.18 : 1 / 1.18;
+        setScale(state.scale * step, state.size / 2, state.size / 2);
+      };
+    }
+    var onZoomIn = onZoomBtn(1);
+    var onZoomOut = onZoomBtn(-1);
 
     function onConfirm() {
       // Render output at 256×256 from the canvas
@@ -2497,6 +2531,8 @@
     zoomEl.addEventListener('input', onZoomSlider);
     btnConfirm.addEventListener('click', onConfirm);
     btnCancel.addEventListener('click', onCancel);
+    if (btnZoomIn) btnZoomIn.addEventListener('click', onZoomIn);
+    if (btnZoomOut) btnZoomOut.addEventListener('click', onZoomOut);
 
     cropperState = {
       cleanup: function () {
@@ -2511,12 +2547,13 @@
         zoomEl.removeEventListener('input', onZoomSlider);
         btnConfirm.removeEventListener('click', onConfirm);
         btnCancel.removeEventListener('click', onCancel);
+        if (btnZoomIn) btnZoomIn.removeEventListener('click', onZoomIn);
+        if (btnZoomOut) btnZoomOut.removeEventListener('click', onZoomOut);
       }
     };
 
-    overlay.classList.add('cropper-overlay--active');
-    overlay.setAttribute('aria-hidden', 'false');
-    draw();
+    // Wait one frame so the activation transition has flushed before drawing.
+    requestAnimationFrame(draw);
   }
 
   function closeCropper() {
@@ -3583,13 +3620,24 @@
       if (resultsPanel) resultsPanel.style.display = 'none';
       var stepsEl = document.querySelector('.wizard__steps');
       if (stepsEl) stepsEl.style.display = '';
-      // Quick flow skips match details entirely.
+      // Quick flow skips match details entirely — drops user straight on team config (step 2).
       var step1Panel = document.getElementById('wizardStep1');
+      var backBtn2 = document.getElementById('wizardBack2');
+      var step1Indicator = document.querySelector('[data-step-indicator="1"]');
+      var step1Line = step1Indicator ? step1Indicator.nextElementSibling : null;
       if (forceQuickFlow) {
         if (step1Panel) step1Panel.style.display = 'none';
+        // No going back to step 1 — there's nothing to fill in there for quick games
+        if (backBtn2) backBtn2.style.display = 'none';
+        // Drop the "Match Info" pill and its connector line from the progress strip
+        if (step1Indicator) step1Indicator.style.display = 'none';
+        if (step1Line && step1Line.classList.contains('wizard__step-line')) step1Line.style.display = 'none';
         goToWizardStep(2);
       } else {
         if (step1Panel) step1Panel.style.display = '';
+        if (backBtn2) backBtn2.style.display = '';
+        if (step1Indicator) step1Indicator.style.display = '';
+        if (step1Line && step1Line.classList.contains('wizard__step-line')) step1Line.style.display = '';
         goToWizardStep(1);
       }
 
@@ -3998,7 +4046,9 @@
       if (resultsPanel) resultsPanel.style.display = 'none';
       var stepsEl = document.querySelector('.wizard__steps');
       if (stepsEl) stepsEl.style.display = '';
-      goToWizardStep(1);
+      // Quick flow: jump straight back to team config (step 2).
+      // Group flow: go to step 1 so the admin can edit venue/date/time again.
+      goToWizardStep(forceQuickFlow ? 2 : 1);
       if (els.sessionVenue) els.sessionVenue.value = '';
       if (els.sessionDate) els.sessionDate.value = '';
       if (els.sessionTime) els.sessionTime.value = '';
