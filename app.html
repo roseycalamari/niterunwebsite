@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Nite-Run — Dashboard</title>
   <meta name="description" content="Build balanced teams for your pickup football game.">
   <link rel="icon" type="image/svg+xml" href="assets/images/icons/saviconniterun.svg">
@@ -21,6 +21,21 @@
   <script src="i18n.js"></script>
   <script src="pwa.js" defer></script>
   <script src="walkthrough.js" defer></script>
+  <script>
+    /* Block iOS pinch-zoom + double-tap zoom (Instagram-like app feel).
+       Safari sometimes ignores `maximum-scale=1.0` on the viewport meta. */
+    (function () {
+      document.addEventListener('gesturestart',  function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gestureend',    function (e) { e.preventDefault(); }, { passive: false });
+      var lastTouchEnd = 0;
+      document.addEventListener('touchend', function (e) {
+        var now = Date.now();
+        if (now - lastTouchEnd <= 350) e.preventDefault();
+        lastTouchEnd = now;
+      }, { passive: false });
+    })();
+  </script>
 </head>
 <body>
 
@@ -74,8 +89,8 @@
 
     <!-- ====== TOP BAR ====== -->
     <header class="topbar">
-      <button class="topbar__logo" data-view="dashboard">
-        <img src="assets/images/logoniterunpng.png" alt="Nite-Run" class="topbar__logo-img">
+      <button class="topbar__logo" data-view="dashboard" aria-label="Nite-Run">
+        <span class="topbar__logo-img" role="img" aria-label="Nite-Run"></span>
       </button>
       <h1 class="topbar__title" id="pageTitle" data-i18n="app.nav.dashboard">Dashboard</h1>
       <div class="topbar__right">
@@ -878,6 +893,27 @@
       <div class="modal__actions">
         <button class="btn btn--secondary btn--sm" id="modalCancel" data-i18n="app.actions.cancel">Cancel</button>
         <button class="btn btn--primary btn--sm" id="modalConfirm" data-i18n="app.actions.confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar Cropper -->
+  <div class="cropper-overlay" id="cropperOverlay" aria-hidden="true">
+    <div class="cropper">
+      <h3 class="cropper__title" data-i18n="app.cropper.title">Adjust your photo</h3>
+      <p class="cropper__hint" data-i18n="app.cropper.hint">Drag to position. Pinch or use the slider to zoom.</p>
+      <div class="cropper__stage" id="cropperStage">
+        <canvas class="cropper__canvas" id="cropperCanvas"></canvas>
+        <div class="cropper__mask" aria-hidden="true"></div>
+      </div>
+      <div class="cropper__controls">
+        <span class="cropper__zoom-label" aria-hidden="true">−</span>
+        <input type="range" class="cropper__zoom" id="cropperZoom" min="1" max="3" step="0.01" value="1" aria-label="Zoom">
+        <span class="cropper__zoom-label" aria-hidden="true">+</span>
+      </div>
+      <div class="cropper__actions">
+        <button class="btn btn--secondary btn--sm" type="button" id="cropperCancel" data-i18n="app.actions.cancel">Cancel</button>
+        <button class="btn btn--primary btn--sm" type="button" id="cropperConfirm" data-i18n="app.cropper.use_photo">Use photo</button>
       </div>
     </div>
   </div>

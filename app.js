@@ -2178,53 +2178,322 @@
 
     input.addEventListener('change', function () {
       var file = input.files[0];
-      if (!file) return;
+      if (!file) { input.value = ''; return; }
 
       if (!file.type.startsWith('image/')) {
         showToast(t('toast.avatar_select_image'), 'info');
+        input.value = '';
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
+      // 15 MB hard cap on raw pick — modern phone photos are easily 8–12 MB.
+      // The cropper downsizes to a small JPEG before upload, so the hard cap
+      // is generous on purpose. Storage rule still enforces 2 MB on the upload itself.
+      if (file.size > 15 * 1024 * 1024) {
         showToast(t('toast.avatar_size_limit'), 'info');
+        input.value = '';
         return;
       }
 
-      showToast(t('toast.uploading'), 'info');
-      compressAndUpload(file, user);
+      openAvatarCropper(file, function (blob) {
+        showToast(t('toast.uploading'), 'info');
+        uploadAvatar(blob, user);
+      });
       input.value = '';
     });
   }
 
-  function compressAndUpload(file, user) {
+  /* ---------- AVATAR CROPPER ----------
+     Lightweight square/circle cropper. Loads the user-picked file into an
+     <img>, lets them pan + pinch/slider zoom inside a square stage, then
+     renders a 256×256 JPEG at quality 0.85 (~50–120 KB) for upload.
+     ----------------------------------- */
+  var cropperState = null;
+
+  function openAvatarCropper(file, onConfirm) {
+    var overlay = document.getElementById('cropperOverlay');
+    var stage = document.getElementById('cropperStage');
+    var canvas = document.getElementById('cropperCanvas');
+    var zoom = document.getElementById('cropperZoom');
+    var btnCancel = document.getElementById('cropperCancel');
+    var btnConfirm = document.getElementById('cropperConfirm');
+    if (!overlay || !stage || !canvas || !zoom || !btnCancel || !btnConfirm) {
+      // Fallback: no cropper UI in DOM, do plain compress + upload
+      compressFileToAvatarBlob(file, 256).then(function (blob) { onConfirm(blob); }).catch(function () {
+        showToast(t('toast.avatar_process_failed'), 'info');
+      });
+      return;
+    }
+
     var reader = new FileReader();
     reader.onload = function (e) {
       var img = new Image();
       img.onload = function () {
-        var canvas = document.createElement('canvas');
-        var maxSize = 256;
-        var w = img.width;
-        var h = img.height;
-
-        if (w > h) {
-          if (w > maxSize) { h = h * (maxSize / w); w = maxSize; }
-        } else {
-          if (h > maxSize) { w = w * (maxSize / h); h = maxSize; }
-        }
-
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-
-        canvas.toBlob(function (blob) {
-          if (!blob) { showToast(t('toast.avatar_process_failed'), 'info'); return; }
-          uploadAvatar(blob, user);
-        }, 'image/jpeg', 0.8);
+        startCropper({
+          overlay: overlay,
+          stage: stage,
+          canvas: canvas,
+          zoomEl: zoom,
+          btnCancel: btnCancel,
+          btnConfirm: btnConfirm,
+          image: img,
+          onConfirm: onConfirm
+        });
+      };
+      img.onerror = function () {
+        showToast(t('toast.avatar_process_failed'), 'info');
       };
       img.src = e.target.result;
     };
+    reader.onerror = function () {
+      showToast(t('toast.avatar_process_failed'), 'info');
+    };
     reader.readAsDataURL(file);
+  }
+
+  function startCropper(opts) {
+    closeCropper(); // ensure clean state
+
+    var overlay = opts.overlay;
+    var stage = opts.stage;
+    var canvas = opts.canvas;
+    var zoomEl = opts.zoomEl;
+    var btnCancel = opts.btnCancel;
+    var btnConfirm = opts.btnConfirm;
+    var img = opts.image;
+
+    var stageRect = stage.getBoundingClientRect();
+    var size = Math.round(stageRect.width); // square stage
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+
+    // Compute the minimum scale so the image fully covers the square stage
+    var iw = img.naturalWidth || img.width;
+    var ih = img.naturalHeight || img.height;
+    var coverScale = Math.max(size / iw, size / ih);
+
+    var state = {
+      img: img,
+      iw: iw,
+      ih: ih,
+      ctx: ctx,
+      size: size,
+      minScale: coverScale,
+      maxScale: coverScale * 4,
+      scale: coverScale,
+      // Translation in stage-space (where (0,0) = stage top-left).
+      // We'll center the image initially.
+      tx: 0,
+      ty: 0,
+      // Drag tracking
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+      // Pinch tracking
+      pinchStartDist: 0,
+      pinchStartScale: 0
+    };
+
+    function center() {
+      state.tx = (state.size - state.iw * state.scale) / 2;
+      state.ty = (state.size - state.ih * state.scale) / 2;
+    }
+    center();
+
+    function clampTranslate() {
+      // Image must always cover the stage (no gaps).
+      var w = state.iw * state.scale;
+      var h = state.ih * state.scale;
+      var minTx = state.size - w;
+      var minTy = state.size - h;
+      if (state.tx > 0) state.tx = 0;
+      if (state.ty > 0) state.ty = 0;
+      if (state.tx < minTx) state.tx = minTx;
+      if (state.ty < minTy) state.ty = minTy;
+    }
+
+    function draw() {
+      clampTranslate();
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, state.size, state.size);
+      ctx.drawImage(
+        state.img,
+        state.tx, state.ty,
+        state.iw * state.scale, state.ih * state.scale
+      );
+    }
+
+    function setScale(newScale, anchorX, anchorY) {
+      var s2 = Math.max(state.minScale, Math.min(state.maxScale, newScale));
+      if (s2 === state.scale) return;
+      // Keep the point under the anchor stationary.
+      var ratio = s2 / state.scale;
+      state.tx = anchorX - (anchorX - state.tx) * ratio;
+      state.ty = anchorY - (anchorY - state.ty) * ratio;
+      state.scale = s2;
+      // Sync slider value if not driven by it
+      var sliderVal = ((s2 - state.minScale) / (state.maxScale - state.minScale)) * 2 + 1;
+      zoomEl.value = String(sliderVal.toFixed(3));
+      draw();
+    }
+
+    // Pointer / touch handlers
+    function onPointerDown(e) {
+      if (e.touches && e.touches.length === 2) {
+        state.dragging = false;
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        state.pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+        state.pinchStartScale = state.scale;
+        return;
+      }
+      var p = pointFromEvent(e);
+      state.dragging = true;
+      state.lastX = p.x;
+      state.lastY = p.y;
+      e.preventDefault();
+    }
+
+    function onPointerMove(e) {
+      if (e.touches && e.touches.length === 2 && state.pinchStartDist > 0) {
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - stageRect.left;
+        var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - stageRect.top;
+        var newScale = state.pinchStartScale * (dist / state.pinchStartDist);
+        setScale(newScale, midX, midY);
+        e.preventDefault();
+        return;
+      }
+      if (!state.dragging) return;
+      var p = pointFromEvent(e);
+      state.tx += (p.x - state.lastX);
+      state.ty += (p.y - state.lastY);
+      state.lastX = p.x;
+      state.lastY = p.y;
+      draw();
+      e.preventDefault();
+    }
+
+    function onPointerUp() {
+      state.dragging = false;
+      state.pinchStartDist = 0;
+    }
+
+    function pointFromEvent(e) {
+      if (e.touches && e.touches.length) {
+        return { x: e.touches[0].clientX - stageRect.left, y: e.touches[0].clientY - stageRect.top };
+      }
+      return { x: e.clientX - stageRect.left, y: e.clientY - stageRect.top };
+    }
+
+    function onWheel(e) {
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? 0.92 : 1.08;
+      var rect = stage.getBoundingClientRect();
+      var ax = e.clientX - rect.left;
+      var ay = e.clientY - rect.top;
+      setScale(state.scale * delta, ax, ay);
+    }
+
+    function onZoomSlider() {
+      var v = parseFloat(zoomEl.value);
+      var newScale = state.minScale + ((v - 1) / 2) * (state.maxScale - state.minScale);
+      setScale(newScale, state.size / 2, state.size / 2);
+    }
+
+    function onConfirm() {
+      // Render output at 256×256 from the canvas
+      var out = document.createElement('canvas');
+      var OUT = 256;
+      out.width = OUT;
+      out.height = OUT;
+      var octx = out.getContext('2d');
+      octx.drawImage(canvas, 0, 0, state.size, state.size, 0, 0, OUT, OUT);
+
+      out.toBlob(function (blob) {
+        if (!blob) {
+          showToast(t('toast.avatar_process_failed'), 'info');
+          return;
+        }
+        closeCropper();
+        if (typeof opts.onConfirm === 'function') opts.onConfirm(blob);
+      }, 'image/jpeg', 0.85);
+    }
+
+    function onCancel() { closeCropper(); }
+
+    // Wire up
+    zoomEl.value = '1';
+    stage.addEventListener('mousedown', onPointerDown);
+    stage.addEventListener('touchstart', onPointerDown, { passive: false });
+    document.addEventListener('mousemove', onPointerMove);
+    stage.addEventListener('touchmove', onPointerMove, { passive: false });
+    document.addEventListener('mouseup', onPointerUp);
+    stage.addEventListener('touchend', onPointerUp);
+    stage.addEventListener('touchcancel', onPointerUp);
+    stage.addEventListener('wheel', onWheel, { passive: false });
+    zoomEl.addEventListener('input', onZoomSlider);
+    btnConfirm.addEventListener('click', onConfirm);
+    btnCancel.addEventListener('click', onCancel);
+
+    cropperState = {
+      cleanup: function () {
+        stage.removeEventListener('mousedown', onPointerDown);
+        stage.removeEventListener('touchstart', onPointerDown);
+        document.removeEventListener('mousemove', onPointerMove);
+        stage.removeEventListener('touchmove', onPointerMove);
+        document.removeEventListener('mouseup', onPointerUp);
+        stage.removeEventListener('touchend', onPointerUp);
+        stage.removeEventListener('touchcancel', onPointerUp);
+        stage.removeEventListener('wheel', onWheel);
+        zoomEl.removeEventListener('input', onZoomSlider);
+        btnConfirm.removeEventListener('click', onConfirm);
+        btnCancel.removeEventListener('click', onCancel);
+      }
+    };
+
+    overlay.classList.add('cropper-overlay--active');
+    overlay.setAttribute('aria-hidden', 'false');
+    draw();
+  }
+
+  function closeCropper() {
+    var overlay = document.getElementById('cropperOverlay');
+    if (overlay) {
+      overlay.classList.remove('cropper-overlay--active');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    if (cropperState && typeof cropperState.cleanup === 'function') cropperState.cleanup();
+    cropperState = null;
+  }
+
+  // Used as a fallback if the cropper UI isn't available.
+  function compressFileToAvatarBlob(file, maxSize) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var canvas = document.createElement('canvas');
+          var w = img.width, h = img.height;
+          if (w > h) {
+            if (w > maxSize) { h = h * (maxSize / w); w = maxSize; }
+          } else {
+            if (h > maxSize) { w = w * (maxSize / h); h = maxSize; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function (blob) { blob ? resolve(blob) : reject(); }, 'image/jpeg', 0.85);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   function uploadAvatar(blob, user) {
@@ -2232,25 +2501,46 @@
       showToast(t('toast.storage_unavailable'), 'info');
       return;
     }
+    if (!blob) {
+      showToast(t('toast.avatar_process_failed'), 'info');
+      return;
+    }
+
+    // Defensive: blob should never exceed 2 MB after crop, but check just in case.
+    if (blob.size > 2 * 1024 * 1024) {
+      showToast(t('toast.avatar_size_limit'), 'info');
+      return;
+    }
 
     var path = 'avatars/' + user.uid + '.jpg';
     var ref = storage.ref().child(path);
 
     ref.put(blob, { contentType: 'image/jpeg' })
-      .then(function (snapshot) {
-        return snapshot.ref.getDownloadURL();
+      .then(function (snapshot) { return snapshot.ref.getDownloadURL(); })
+      .then(function (url) {
+        return db.collection('users').doc(user.uid).update({ photoURL: url })
+          .then(function () { return url; });
       })
       .then(function (url) {
-        return db.collection('users').doc(user.uid).update({
-          photoURL: url
-        });
+        // Update Auth profile too so future tokens have the correct photoURL
+        return user.updateProfile({ photoURL: url }).catch(function () {});
       })
       .then(function () {
         showToast(t('toast.avatar_updated'), 'success');
       })
       .catch(function (err) {
         console.error('Avatar upload error:', err);
-        showToast(t('toast.upload_failed'), 'info');
+        try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'uploadAvatar'); } catch (e2) {}
+        var c = err && err.code ? String(err.code) : '';
+        if (c === 'storage/unauthorized' || c === 'storage/unauthenticated' || c === 'permission-denied') {
+          showToast(t('toast.error.permission') || 'Not allowed.', 'info');
+        } else if (c === 'storage/canceled') {
+          // user-canceled, no toast
+        } else if (c === 'storage/retry-limit-exceeded' || c === 'unavailable') {
+          showToast(t('toast.error.offline') || 'Connection issue.', 'info');
+        } else {
+          showToast(t('toast.upload_failed'), 'info');
+        }
       });
   }
 

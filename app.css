@@ -23,6 +23,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Disable iOS rubber-band scroll on the html root and double-tap zoom */
+  touch-action: manipulation;
 }
 
 body {
@@ -34,6 +37,9 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Stop iOS double-tap zoom and pinch zoom on the whole UI */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 img {
@@ -467,10 +473,12 @@ body.dark .lang-switch__btn--active {
 }
 
 .topbar__logo-img {
+  display: block;
   height: 52px;
-  width: auto;
-  object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(95%) saturate(4487%) hue-rotate(211deg) brightness(101%) contrast(106%);
+  width: 140px;
+  background-color: var(--blue);
+  -webkit-mask: url('assets/images/logoniterunpng.png') no-repeat center / contain;
+          mask: url('assets/images/logoniterunpng.png') no-repeat center / contain;
 }
 
 .topbar__title {
@@ -2855,6 +2863,167 @@ body.dark #view-groups .groups-card__note {
   transform: translateY(0) scale(1);
 }
 
+/* ===================================
+   AVATAR CROPPER
+   =================================== */
+.cropper-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(17, 17, 17, 0.78);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.cropper-overlay--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cropper {
+  background: var(--cream);
+  border: 2px solid var(--black);
+  box-shadow: 8px 8px 0 var(--black);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.3s var(--ease-bounce);
+}
+
+.cropper-overlay--active .cropper {
+  transform: translateY(0) scale(1);
+}
+
+.cropper__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.cropper__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+.cropper__stage {
+  position: relative;
+  width: 100%;
+  /* Square stage that uses available width up to 320px */
+  aspect-ratio: 1 / 1;
+  max-width: 320px;
+  margin: 4px auto 0;
+  background: #111;
+  border: 2px solid var(--black);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cropper__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Circular cutout mask using a radial gradient: inside the circle is fully
+   transparent, outside is dimmed with the cream color so users see exactly
+   what will be saved. */
+.cropper__mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    transparent 0,
+    transparent calc(50% - 1px),
+    rgba(17, 17, 17, 0.55) 50%,
+    rgba(17, 17, 17, 0.55) 100%
+  );
+  /* Add a thin ring at the circle edge for crispness */
+  box-shadow: inset 0 0 0 2px rgba(255, 252, 239, 0.8);
+  border-radius: 0;
+}
+
+.cropper__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 0;
+}
+
+.cropper__zoom {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(47, 47, 47, 0.18);
+  border: 1px solid var(--black);
+  outline: none;
+  cursor: pointer;
+}
+
+.cropper__zoom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  background: var(--blue);
+  border: 2px solid var(--black);
+  cursor: grab;
+  border-radius: 0;
+}
+
+.cropper__zoom::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: var(--blue);
+  border: 2px solid var(--black);
+  cursor: grab;
+  border-radius: 0;
+}
+
+.cropper__zoom-label {
+  font-weight: 800;
+  font-size: 1rem;
+  width: 14px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.cropper__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cropper__actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+body.dark .cropper {
+  background: var(--black);
+  color: var(--cream);
+}
+body.dark .cropper__stage {
+  border-color: var(--cream);
+}
+
 .modal__title {
   font-size: clamp(1.1rem, 1.5vw, 1.3rem);
   letter-spacing: 0.06em;
@@ -3197,7 +3366,18 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     display: block;
   }
 
-  /* Prevent iOS auto-zoom on input focus (requires >= 16px) */
+  /* Prevent iOS auto-zoom on input focus (requires >= 16px) — apply to ALL inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="search"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea,
   .wiz-form__input,
   .add-form__input {
     font-size: 16px;
@@ -3295,6 +3475,143 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     width: 80px;
     height: 80px;
     font-size: 1.9rem;
+  }
+}
+
+/* ===================================
+   RESPONSIVE — VERY NARROW (iPhone mini / SE)
+   Targets ≤ 400px wide — gives more breathing room on
+   tight screens by tightening padding and font sizes.
+   =================================== */
+@media (max-width: 400px) {
+  /* Reduce overall outer padding so cards don't feel cramped */
+  .view {
+    padding: var(--space-sm);
+  }
+
+  /* Topbar: shrink so it doesn't eat ~10% of vertical space */
+  .topbar {
+    height: 64px;
+    padding: 0 var(--space-sm);
+  }
+  .topbar__logo-img {
+    height: 40px;
+    width: 110px;
+  }
+
+  /* Cards: less padding */
+  .card {
+    padding: 1rem;
+  }
+  .card__title {
+    font-size: 1.05rem;
+  }
+
+  /* Hub (dashboard) panels */
+  .hub__panel {
+    padding: 1rem;
+  }
+  .hub__title {
+    font-size: 1rem;
+  }
+  .hub__desc {
+    font-size: 0.78rem;
+  }
+
+  /* Stat grids: keep three columns but tighter padding/fonts */
+  .profile__grid {
+    gap: 0.5rem;
+  }
+  .card--stat {
+    padding: 0.6rem 0.4rem;
+  }
+  .card--stat__val {
+    font-size: 1.5rem;
+  }
+  .card--stat__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Profile header: tighter avatar + name spacing */
+  .profile__avatar--lg {
+    width: 68px;
+    height: 68px;
+    font-size: 1.6rem;
+  }
+  .profile__name {
+    font-size: 1.4rem;
+  }
+  .profile__meta {
+    font-size: 0.78rem;
+  }
+
+  /* Group banner: tighter copy + safer line-heights */
+  .group-banner {
+    min-height: 200px;
+  }
+  .group-banner__title {
+    font-size: 1.5rem;
+  }
+  .group-banner__meta {
+    font-size: 0.78rem;
+  }
+
+  /* Settings rows: stop overlap between long label + toggle */
+  .setting-row {
+    gap: 0.6rem;
+    padding: 0.85rem 0;
+  }
+  .setting-row__label {
+    font-size: 0.92rem;
+  }
+  .setting-row__desc {
+    font-size: 0.75rem;
+  }
+
+  /* Buttons in side-by-side rows often overflow on iPhone mini */
+  .wizard__nav-row,
+  .modal__actions,
+  .cropper__actions {
+    gap: 0.5rem;
+  }
+
+  /* Notification dropdown: span the screen instead of being fixed-width */
+  .notif-dropdown {
+    width: calc(100vw - 24px);
+    max-width: 320px;
+    right: 0;
+  }
+
+  /* Member rows: a little less padding so the avatar+name+button fit */
+  .member-row {
+    padding: 0.6rem;
+    gap: 0.5rem;
+  }
+
+  /* Group items in the list: tighter so the badge + name + arrow fit */
+  .group-item {
+    padding: 0.85rem 0.95rem;
+  }
+  .group-item__name {
+    font-size: 0.95rem;
+  }
+  .group-item__count {
+    font-size: 0.72rem;
+  }
+
+  /* Cropper: shrink so it always fits with the keyboard or notch */
+  .cropper {
+    padding: 1rem;
+    max-width: 340px;
+  }
+  .cropper__stage {
+    max-width: 280px;
+  }
+
+  /* Live cards: tighter on tiny screens */
+  .live-card {
+    padding: 1rem;
   }
 }
 
@@ -4267,7 +4584,7 @@ body.dark .profile__username {
 }
 
 body.dark .topbar__logo-img {
-  filter: brightness(0) invert(1);
+  background-color: var(--cream);
 }
 
 /* ---- Cards (main surface) ---- */
