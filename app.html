@@ -22,18 +22,14 @@
   <script src="pwa.js" defer></script>
   <script src="walkthrough.js" defer></script>
   <script>
-    /* Block iOS pinch-zoom + double-tap zoom (Instagram-like app feel).
-       Safari sometimes ignores `maximum-scale=1.0` on the viewport meta. */
+    /* Block iOS pinch-zoom (Instagram-like app feel).
+       Safari sometimes ignores `maximum-scale=1.0` on the viewport meta —
+       we only intercept multi-touch gesture events. Double-tap zoom is handled
+       by `touch-action: manipulation` in CSS, which doesn't interfere with single taps. */
     (function () {
       document.addEventListener('gesturestart',  function (e) { e.preventDefault(); }, { passive: false });
       document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
       document.addEventListener('gestureend',    function (e) { e.preventDefault(); }, { passive: false });
-      var lastTouchEnd = 0;
-      document.addEventListener('touchend', function (e) {
-        var now = Date.now();
-        if (now - lastTouchEnd <= 350) e.preventDefault();
-        lastTouchEnd = now;
-      }, { passive: false });
     })();
   </script>
 </head>
@@ -259,12 +255,13 @@
               </div>
             </div>
           </div>
-          <div class="card card--add">
+          <div class="card card--add" id="matchDetailsCard">
             <h2 class="card__title" data-i18n="app.match_details.title">Match Details</h2>
+            <p class="wiz-form__hint" id="matchDetailsHint" style="display:none;" data-i18n="app.match_details.quick_hint">Quick games skip these — they're for verified group sessions only.</p>
             <div class="wiz-form">
               <div class="wiz-form__group">
                 <label class="wiz-form__label" for="sessionVenue" data-i18n="app.match_details.venue">Venue</label>
-                <input class="wiz-form__input" type="text" id="sessionVenue" data-i18n-placeholder="app.match_details.venue_ph" placeholder="e.g. Riverside Pitch" autocomplete="off" required>
+                <input class="wiz-form__input" type="text" id="sessionVenue" data-i18n-placeholder="app.match_details.venue_ph" placeholder="e.g. Riverside Pitch" autocomplete="off">
               </div>
               <div class="wiz-form__row">
                 <div class="wiz-form__group">
@@ -598,7 +595,10 @@
         </div>
 
         <div class="card">
-          <div class="wizard__nav-row" style="margin:0;">
+          <div class="wizard__nav-row" style="margin:0;flex-wrap:wrap;">
+            <button class="btn btn--primary" type="button" id="groupDetailStartSession" style="flex:1 1 100%;justify-content:center;display:none;">
+              <span data-i18n="app.group.start_session">Start a session</span> <span class="btn__arrow">▶</span>
+            </button>
             <button class="btn btn--secondary" type="button" id="groupDetailCopyCode" style="flex:1;justify-content:center;">
               <span data-i18n="app.groups.action_copy_code">Copy invite code</span> <span class="btn__arrow">⎘</span>
             </button>

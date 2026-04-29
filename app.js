@@ -970,6 +970,27 @@
         if (els.officialGroupSelect) els.officialGroupSelect.value = '';
       }
 
+      // Match Details card: hide for quick games (no venue/date/time needed),
+      // show for groups so admins can pick the venue, date and time.
+      var matchCard = document.getElementById('matchDetailsCard');
+      var venueInput = document.getElementById('sessionVenue');
+      var dateInput  = document.getElementById('sessionDate');
+      var timeInput  = document.getElementById('sessionTime');
+      if (matchCard) {
+        if (mode === 'official') {
+          matchCard.style.display = '';
+          if (venueInput) { venueInput.disabled = false; venueInput.required = true; }
+          if (dateInput)  { dateInput.disabled  = false; }
+          if (timeInput)  { timeInput.disabled  = false; }
+        } else {
+          // Quick game: hide card entirely + clear fields so they don't block submission
+          matchCard.style.display = 'none';
+          if (venueInput) { venueInput.value = ''; venueInput.required = false; venueInput.disabled = true; }
+          if (dateInput)  { dateInput.value  = ''; dateInput.disabled = true; }
+          if (timeInput)  { timeInput.value  = ''; timeInput.disabled = true; }
+        }
+      }
+
       stripUidsFromQuickRoster();
       updatePlayerNameFieldCopy();
       updateOfficialGroupHint();
@@ -1546,6 +1567,44 @@
         if (!code) return;
         copyToClipboard(code);
         showToast(t('toast.invite_code_copied'), 'success');
+      };
+    }
+
+    var startBtn = document.getElementById('groupDetailStartSession');
+    if (startBtn) {
+      var canStart = !!(g && g.myRole === 'admin' && g.isVerified);
+      // Show only for admins of verified groups; admins of unverified groups still
+      // see the button but get a hint when tapping. Members don't see it at all.
+      var visibleForRole = !!(g && g.myRole === 'admin');
+      startBtn.style.display = visibleForRole ? '' : 'none';
+      startBtn.disabled = !canStart;
+      startBtn.classList.toggle('btn--disabled', !canStart);
+      startBtn.onclick = function () {
+        if (!g) return;
+        if (g.myRole !== 'admin') {
+          showToast(t('app.group.start_session_admin_only'), 'info');
+          return;
+        }
+        if (!g.isVerified) {
+          showToast(t('app.group.start_session_unverified'), 'info');
+          return;
+        }
+        selectedGroupId = g.id;
+        selectedGroup = g;
+        forceQuickFlow = false;
+        switchView('session');
+        if (els.sessionMode) {
+          els.sessionMode.value = 'official';
+          try { els.sessionMode.dispatchEvent(new Event('change')); } catch (e2) {}
+        }
+        if (els.officialGroupSelect) {
+          els.officialGroupSelect.value = g.id;
+          try { els.officialGroupSelect.dispatchEvent(new Event('change')); } catch (e3) {}
+        }
+        // Pre-fill venue with the group's saved venue if available
+        var venueInput = document.getElementById('sessionVenue');
+        if (venueInput && g.venue) venueInput.value = g.venue;
+        listenGroupLiveSessions(currentUser, g.id);
       };
     }
   }
@@ -4326,21 +4385,6 @@
     return 0;
   }
 
-  function pickBestTeamIndex(teams, player, ppt, nTeams, keyFn) {
-    var u = utilityScore(player);
-    var bestIdx = null;
-    var bestKey = null;
-    for (var i = 0; i < nTeams; i++) {
-      if (teams[i].players.length >= ppt) continue;
-      var key = keyFn(teams, i, u, player);
-      if (bestKey === null || cmpKey(key, bestKey) < 0) {
-        bestKey = key;
-        bestIdx = i;
-      }
-    }
-    return bestIdx;
-  }
-
   function positionClusterPenalty(teams) {
     var positions = ['GK', 'HYB', 'DEF', 'ATK'];
     var penalty = 0;
@@ -4353,31 +4397,166 @@
     return penalty;
   }
 
-  function refineTeamsBySwaps(teams, nTeams) {
-    recomputeTeamTotals(teams);
-    function combinedPenalty() {
-      return spreadOfTeamEff(teams) + 0.14 * positionClusterPenalty(teams);
+  /* Variance of effective totals — squared deviations are a stricter
+     balance metric than max-min spread, because it punishes outliers
+     even when they don't change the extremes. */
+  function varianceOfTeamEff(teams) {
+    if (!teams.length) return 0;
+    var sum = 0;
+    for (var i = 0; i < teams.length; i++) sum += teams[i].effTotal;
+    var mean = sum / teams.length;
+    var v = 0;
+    for (var k = 0; k < teams.length; k++) {
+      var d = teams[k].effTotal - mean;
+      v += d * d;
     }
-    for (var round = 0; round < 14; round++) {
+    return v / teams.length;
+  }
+
+  function combinedBalanceCost(teams) {
+    /* Spread (max-min) is the primary signal users feel. Variance is a
+       finer-grained tie-breaker. Position-cluster penalty discourages
+       e.g. all attackers on one team. */
+    return spreadOfTeamEff(teams) * 1.0
+         + varianceOfTeamEff(teams) * 0.18
+         + positionClusterPenalty(teams) * 0.12;
+  }
+
+  function cloneTeams(teams) {
+    return teams.map(function (t) {
+      return {
+        players: t.players.slice(),
+        effTotal: t.effTotal,
+        uiTotal: t.uiTotal
+      };
+    });
+  }
+
+  function shuffleArray(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  /* Greedy LPT assignment: sort players by utility desc, then for each
+     player place them on the team with lowest current utility that
+     still has room. Position-cluster aware. */
+  function greedyAssign(pool, nTeams, ppt, randomize) {
+    var teams = [];
+    for (var t = 0; t < nTeams; t++) {
+      teams.push({ players: [], effTotal: 0, uiTotal: 0 });
+    }
+
+    var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
+    var others = pool.filter(function (p) { return p.position !== 'GK'; });
+
+    function placeWithKey(player, keyFn) {
+      var u = utilityScore(player);
+      var bestIdx = null;
+      var bestKey = null;
+      // When randomizing, iterate teams in shuffled order so ties break differently
+      var order = [];
+      for (var i = 0; i < nTeams; i++) order.push(i);
+      if (randomize) shuffleArray(order);
+
+      for (var oi = 0; oi < order.length; oi++) {
+        var idx = order[oi];
+        if (teams[idx].players.length >= ppt) continue;
+        var key = keyFn(teams, idx, u, player);
+        if (bestKey === null || cmpKey(key, bestKey) < 0) {
+          bestKey = key;
+          bestIdx = idx;
+        }
+      }
+      if (bestIdx !== null) {
+        teams[bestIdx].players.push(player);
+        teams[bestIdx].effTotal += u;
+        teams[bestIdx].uiTotal += player.rating;
+      }
+    }
+
+    goalkeepers.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
+    if (randomize) {
+      // Add a tiny random jitter to break ties between equal-utility GKs
+      goalkeepers.sort(function (a, b) {
+        var diff = utilityScore(b) - utilityScore(a);
+        return Math.abs(diff) < 1e-9 ? (Math.random() - 0.5) : diff;
+      });
+    }
+
+    goalkeepers.forEach(function (gk) {
+      placeWithKey(gk, function (T, i, addU) {
+        return [
+          simulatedSpreadAfterAdd(T, i, addU),
+          countPosOnTeam(T[i], 'GK'),
+          T[i].players.length,
+          T[i].effTotal
+        ];
+      });
+    });
+
+    others.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
+    if (randomize) {
+      others.sort(function (a, b) {
+        var diff = utilityScore(b) - utilityScore(a);
+        return Math.abs(diff) < 1e-9 ? (Math.random() - 0.5) : diff;
+      });
+    }
+
+    others.forEach(function (player) {
+      placeWithKey(player, function (T, i, addU, pl) {
+        return [
+          simulatedSpreadAfterAdd(T, i, addU),
+          countPosOnTeam(T[i], pl.position),
+          T[i].players.length,
+          T[i].effTotal
+        ];
+      });
+    });
+
+    return teams;
+  }
+
+  /* Hill-climb via single-player swaps. Recomputes totals incrementally
+     for speed, restores swap if no improvement found. Stops when a full
+     pass yields no improvement (local optimum). */
+  function refineTeamsBySwaps(teams, nTeams, maxRounds) {
+    recomputeTeamTotals(teams);
+    var rounds = typeof maxRounds === 'number' ? maxRounds : 30;
+    var cur = combinedBalanceCost(teams);
+    for (var round = 0; round < rounds; round++) {
       var improved = false;
-      var cur = combinedPenalty();
       for (var a = 0; a < nTeams; a++) {
         for (var b = a + 1; b < nTeams; b++) {
           for (var i = 0; i < teams[a].players.length; i++) {
             for (var j = 0; j < teams[b].players.length; j++) {
               var p1 = teams[a].players[i];
               var p2 = teams[b].players[j];
+              var u1 = utilityScore(p1);
+              var u2 = utilityScore(p2);
+
+              // Apply swap (incremental totals)
               teams[a].players[i] = p2;
               teams[b].players[j] = p1;
-              recomputeTeamTotals(teams);
-              var next = combinedPenalty();
+              teams[a].effTotal += (u2 - u1);
+              teams[b].effTotal += (u1 - u2);
+              teams[a].uiTotal += (p2.rating - p1.rating);
+              teams[b].uiTotal += (p1.rating - p2.rating);
+
+              var next = combinedBalanceCost(teams);
               if (next < cur - 1e-9) {
                 cur = next;
                 improved = true;
               } else {
+                // revert
                 teams[a].players[i] = p1;
                 teams[b].players[j] = p2;
-                recomputeTeamTotals(teams);
+                teams[a].effTotal -= (u2 - u1);
+                teams[b].effTotal -= (u1 - u2);
+                teams[a].uiTotal -= (p2.rating - p1.rating);
+                teams[b].uiTotal -= (p1.rating - p2.rating);
               }
             }
           }
@@ -4385,6 +4564,30 @@
       }
       if (!improved) break;
     }
+    return cur;
+  }
+
+  /* Multi-restart wrapper: try N seedings of the greedy assignment with
+     randomized tie-breaks, refine each via swaps, and return the best.
+     This is a tried-and-true approach for the balanced-partition problem
+     and produces noticeably tighter results than a single greedy pass. */
+  function buildBalancedTeams(pool, nTeams, ppt, restarts) {
+    var bestTeams = null;
+    var bestCost = Infinity;
+
+    var attempts = typeof restarts === 'number' ? restarts : 12;
+
+    for (var r = 0; r < attempts; r++) {
+      var randomize = r > 0; // first run is deterministic for reproducibility
+      var trial = greedyAssign(pool, nTeams, ppt, randomize);
+      var cost = refineTeamsBySwaps(trial, nTeams, 30);
+      if (cost < bestCost - 1e-9) {
+        bestCost = cost;
+        bestTeams = cloneTeams(trial);
+      }
+    }
+
+    return bestTeams || greedyAssign(pool, nTeams, ppt, false);
   }
 
   function generateTeams() {
@@ -4411,52 +4614,10 @@
 
         var pool = players.slice();
 
-        var teams = [];
-        for (var t = 0; t < nTeams; t++) {
-          teams.push({ players: [], effTotal: 0, uiTotal: 0 });
-        }
-
-        var goalkeepers = pool.filter(function (p) { return p.position === 'GK'; });
-        var others = pool.filter(function (p) { return p.position !== 'GK'; });
-
-        goalkeepers.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
-
-        goalkeepers.forEach(function (gk) {
-          var u = utilityScore(gk);
-          var idx = pickBestTeamIndex(teams, gk, ppt, nTeams, function (T, i, addU) {
-            var sp = simulatedSpreadAfterAdd(T, i, addU);
-            var gkc = countPosOnTeam(T[i], 'GK');
-            var sz = T[i].players.length;
-            var ef = T[i].effTotal;
-            return [sp, gkc, sz, ef];
-          });
-          if (idx !== null) {
-            teams[idx].players.push(gk);
-            teams[idx].effTotal += u;
-            teams[idx].uiTotal += gk.rating;
-          }
-        });
-
-        others.sort(function (a, b) { return utilityScore(b) - utilityScore(a); });
-
-        others.forEach(function (player) {
-          var u = utilityScore(player);
-          var idx = pickBestTeamIndex(teams, player, ppt, nTeams, function (T, i, addU, pl) {
-            var sp = simulatedSpreadAfterAdd(T, i, addU);
-            var pc = countPosOnTeam(T[i], pl.position);
-            var sz = T[i].players.length;
-            var ef = T[i].effTotal;
-            return [sp, pc, sz, ef];
-          });
-          if (idx !== null) {
-            teams[idx].players.push(player);
-            teams[idx].effTotal += u;
-            teams[idx].uiTotal += player.rating;
-          }
-        });
-
-        recomputeTeamTotals(teams);
-        refineTeamsBySwaps(teams, nTeams);
+        // Multi-restart greedy + hill-climb. Larger restart counts for
+        // smaller pools (cheap), smaller counts for big pools (expensive).
+        var restarts = pool.length <= 20 ? 24 : (pool.length <= 30 ? 16 : 10);
+        var teams = buildBalancedTeams(pool, nTeams, ppt, restarts);
         recomputeTeamTotals(teams);
 
         renderResults(teams);
