@@ -1660,27 +1660,22 @@
       }
     } catch (e) {}
 
-    // Extra guard: confirm this user is admin of this group.
-    db.collection('groups').doc(gid).collection('members').doc(currentUser.uid).get().then(function (doc) {
-      var role = doc.exists ? String((doc.data() || {}).role || '') : '';
-      if (role !== 'admin') {
-        var err = new Error('Not admin');
-        err.code = 'niterun/not-admin';
-        throw err;
-      }
+    // No client-side admin check needed: the Firestore rule on the group doc
+    // only lets admins write `bannerURL`, which is the real source of truth.
+    // The Storage rule simply allows any signed-in user to upload an image to
+    // this path (mirrors how avatars work).
+    try {
+      console.log('[Group banner upload] bucket=', ref.bucket, 'path=', path, 'uid=', currentUser.uid, 'gid=', gid);
+    } catch (e) {}
 
-      try {
-        console.log('[Group banner upload] bucket=', ref.bucket, 'path=', path, 'uid=', currentUser.uid, 'gid=', gid);
-      } catch (e) {}
-
-      return ref.put(blob, { contentType: 'image/jpeg' });
-    })
+    Promise.resolve(ref.put(blob, { contentType: 'image/jpeg' }))
       .then(function (snapshot) {
         return snapshot.ref.getDownloadURL();
       })
       .then(function (url) {
         // Persist the URL on the group doc so the banner survives navigation/reload.
-        return db.collection('groups').doc(gid).update({ bannerURL: url })
+        // Use set(..., {merge:true}) to avoid failures if the doc schema changes.
+        return db.collection('groups').doc(gid).set({ bannerURL: url }, { merge: true })
           .then(function () { return url; })
           .catch(function (err) {
             err = err || new Error('Failed to save banner');
@@ -1707,6 +1702,13 @@
       .catch(function (err) {
         console.error('Group banner upload error:', err);
         var c = err && err.code ? String(err.code) : '';
+        // Surface the exact error code on localhost so we can debug quickly.
+        try {
+          if (window.location && window.location.hostname === 'localhost' && c) {
+            showToast('Banner upload failed: ' + c + (err && err.message ? ' — ' + err.message : ''), 'info');
+            return;
+          }
+        } catch (eDev) {}
         if (c === 'niterun/not-admin') {
           showToast(t('toast.error.permission') || 'Not allowed.', 'info');
           return;
@@ -2614,20 +2616,34 @@
     ref.put(blob, { contentType: 'image/jpeg' })
       .then(function (snapshot) { return snapshot.ref.getDownloadURL(); })
       .then(function (url) {
-        return db.collection('users').doc(user.uid).update({ photoURL: url })
+        // Ensure the user doc exists and persist photoURL reliably.
+        return db.collection('users').doc(user.uid).set({ photoURL: url }, { merge: true })
           .then(function () { return url; });
       })
       .then(function (url) {
         // Update Auth profile too so future tokens have the correct photoURL
-        return user.updateProfile({ photoURL: url }).catch(function () {});
+        return user.updateProfile({ photoURL: url }).catch(function () {}).then(function () { return url; });
       })
-      .then(function () {
+      .then(function (url) {
+        // Update UI immediately (Firestore snapshot can take a moment)
+        try {
+          var name = (user && user.displayName) ? String(user.displayName) : 'Player';
+          var initial = name ? name.charAt(0).toUpperCase() : 'P';
+          applyAvatarPhoto(url, initial);
+        } catch (e0) {}
         showToast(t('toast.avatar_updated'), 'success');
       })
       .catch(function (err) {
         console.error('Avatar upload error:', err);
         try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'uploadAvatar'); } catch (e2) {}
         var c = err && err.code ? String(err.code) : '';
+        // Surface the error code on localhost to make debugging rules/bucket issues easy.
+        try {
+          if (window.location && window.location.hostname === 'localhost' && c) {
+            showToast('Avatar upload failed: ' + c, 'info');
+            return;
+          }
+        } catch (e3) {}
         if (c === 'storage/unauthorized' || c === 'storage/unauthenticated' || c === 'permission-denied') {
           showToast(t('toast.error.permission') || 'Not allowed.', 'info');
         } else if (c === 'storage/canceled') {

@@ -508,11 +508,9 @@ body.dark .lang-switch__btn--active {
 
 .topbar__logo-img {
   display: block;
-  height: 52px;
-  width: 140px;
-  background-color: var(--blue);
-  -webkit-mask: url('assets/images/logoniterunpng.png') no-repeat center / contain;
-          mask: url('assets/images/logoniterunpng.png') no-repeat center / contain;
+  height: 50px;
+  width: 50px;
+  object-fit: contain;
 }
 
 .topbar__title {
@@ -3482,10 +3480,19 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
 
   .topbar {
     height: 80px;
+    /* Make the logo sit like a real "app corner" element (less inset) */
+    padding: 0 calc(env(safe-area-inset-right, 0px) + 12px) 0 calc(env(safe-area-inset-left, 0px) + 12px);
   }
 
   .topbar__logo {
     display: block;
+    padding: 0;
+  }
+
+  .topbar__logo-img {
+    height: 50px;
+    width: 50px;
+    object-fit: contain;
   }
 
   /* Prevent iOS auto-zoom on input focus (requires >= 16px) — apply to ALL inputs */
@@ -3615,11 +3622,11 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
   /* Topbar: shrink so it doesn't eat ~10% of vertical space */
   .topbar {
     height: 64px;
-    padding: 0 var(--space-sm);
+    padding: 0 calc(env(safe-area-inset-right, 0px) + var(--space-sm)) 0 calc(env(safe-area-inset-left, 0px) + var(--space-sm));
   }
   .topbar__logo-img {
-    height: 40px;
-    width: 110px;
+    height: 46px;
+    width: 46px;
   }
 
   /* Cards: generous internal padding so content has room to breathe */

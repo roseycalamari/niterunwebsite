@@ -7,8 +7,10 @@ var firebaseConfig = {
   apiKey: "AIzaSyAbeUAobnX5GYjFXkjFZFFn9AaEA_xxIc8",
   authDomain: "niterun.firebaseapp.com",
   projectId: "niterun",
-  // Firebase Storage bucket name (not the web domain)
-  storageBucket: "niterun.appspot.com",
+  // NOTE: must match the actual default bucket of the Firebase project.
+  // For this project the real bucket is `niterun.firebasestorage.app`
+  // (newer Firebase projects use this domain instead of *.appspot.com).
+  storageBucket: "niterun.firebasestorage.app",
   messagingSenderId: "617509606268",
   appId: "1:617509606268:web:1048f9a1f1143d690f8af9"
 };

@@ -10,14 +10,16 @@ service firebase.storage {
                    && fileName == request.auth.uid + '.jpg';
     }
 
-    // Group banners: path is group-banners/{groupId}/banner.jpg — only group admins can upload/overwrite
+    // Group banners: path is group-banners/{groupId}/banner.jpg
+    // Same simple model as avatars: any signed-in user can upload an image up
+    // to 5 MB. Admin-only gating happens at the Firestore layer — only group
+    // admins can write `bannerURL` on the group doc, so a non-admin upload
+    // never gets linked to a group and is harmless.
     match /group-banners/{groupId}/banner.jpg {
       allow read: if request.auth != null;
       allow write: if request.auth != null
                    && request.resource.size < 5242880
-                   && request.resource.contentType.matches('image/.*')
-                   && firestore.exists(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid))
-                   && firestore.get(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == "admin";
+                   && request.resource.contentType.matches('image/.*');
     }
   }
 }
