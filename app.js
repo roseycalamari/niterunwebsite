@@ -1822,33 +1822,53 @@
         var g = officialGroups.find(function (x) { return x.id === gid; }) || selectedGroup || null;
         var iAmAdmin = !!(g && g.myRole === 'admin');
 
-        var rows = [];
+        var items = [];
         snapshot.forEach(function (doc) {
           var memberId = doc.id;
           var d = doc.data() || {};
           var nm = d.displayName || 'Player';
-          var role = d.role === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
+          var isAdmin = d.role === 'admin';
+          var roleLabel = isAdmin ? t('app.groups.role_admin') : t('app.groups.role_member');
           var initial = (nm || 'P').charAt(0).toUpperCase();
           var photo = d.photoURL || '';
-          var avatarHtml = photo
-            ? ('<img class="member-row__avatar-img" src="' + escapeHtml(photo) + '" alt="">')
-            : escapeHtml(initial);
-          var isAdmin = d.role === 'admin';
+          items.push({
+            id: memberId,
+            nm: nm,
+            isAdmin: isAdmin,
+            roleLabel: roleLabel,
+            initial: initial,
+            photo: photo
+          });
+        });
 
-          var canPromote = iAmAdmin && !isAdmin && memberId !== currentUser.uid;
+        // Always show admins first, then alphabetical.
+        items.sort(function (a, b) {
+          if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1;
+          return (a.nm || '').localeCompare(b.nm || '');
+        });
+
+        var rows = items.map(function (m) {
+          var avatarHtml = m.photo
+            ? ('<img class="member-row__avatar-img" src="' + escapeHtml(m.photo) + '" alt="">')
+            : escapeHtml(m.initial);
+          var canPromote = iAmAdmin && !m.isAdmin && m.id !== currentUser.uid;
           var actionsHtml = canPromote
-            ? '<button type="button" class="member-row__promote" data-promote-uid="' + escapeHtml(memberId) + '">' +
+            ? '<button type="button" class="member-row__promote" data-promote-uid="' + escapeHtml(m.id) + '">' +
                 escapeHtml(t('app.group.member.make_admin')) +
               '</button>'
             : '';
 
-          rows.push(
-            '<div class="member-row' + (isAdmin ? ' member-row--admin' : '') + '">' +
+          var badgeHtml = m.isAdmin
+            ? ('<span class="member-row__badge member-row__badge--admin">★ ' + escapeHtml(m.roleLabel) + '</span>')
+            : ('<span class="member-row__badge">' + escapeHtml(m.roleLabel) + '</span>');
+
+          return (
+            '<div class="member-row' + (m.isAdmin ? ' member-row--admin' : '') + '">' +
               '<div class="member-row__left">' +
                 '<div class="member-row__avatar">' + avatarHtml + '</div>' +
                 '<div class="member-row__info">' +
-                  '<div class="member-row__name">' + escapeHtml(nm) + '</div>' +
-                  '<div class="member-row__role">' + (isAdmin ? ('<span class="member-row__admin-badge">★ ' + escapeHtml(role) + '</span>') : escapeHtml(role)) + '</div>' +
+                  '<div class="member-row__name">' + escapeHtml(m.nm) + '</div>' +
+                  '<div class="member-row__role">' + badgeHtml + '</div>' +
                 '</div>' +
               '</div>' +
               (actionsHtml ? '<div class="member-row__actions">' + actionsHtml + '</div>' : '') +
@@ -1963,6 +1983,17 @@
             selectedGroup = null;
             if (els.sessionMode) els.sessionMode.value = 'official';
             if (els.officialGroupWrap) els.officialGroupWrap.style.display = '';
+            // Fill in member snapshot (username/photo) so other members see the correct avatar.
+            try {
+              db.collection('users').doc(currentUser.uid).get().then(function (udoc) {
+                var d = udoc.exists ? (udoc.data() || {}) : {};
+                return memberRef.set({
+                  displayName: d.displayName || currentUser.displayName || '',
+                  username: d.username || '',
+                  photoURL: d.photoURL || null
+                }, { merge: true });
+              }).catch(function () {});
+            } catch (e3) {}
           });
         });
       }).catch(function (err) {
@@ -1997,16 +2028,22 @@
       return db.runTransaction(function (tx) {
         return tx.get(memberRef).then(function (m) {
           if (m.exists) return { already: true, gid: gid };
-          return tx.get(groupRef).then(function (g) {
+          return Promise.all([tx.get(groupRef), tx.get(userRef)]).then(function (docs) {
+            var g = docs[0];
+            var u = docs[1];
             if (!g.exists) throw new Error('Group missing');
+            var ud = u && u.exists ? (u.data() || {}) : {};
+            var snapName = ud.displayName || currentUser.displayName || '';
+            var snapUsername = ud.username || '';
+            var snapPhoto = ud.photoURL || null;
 
             tx.set(memberRef, {
               role: 'member',
               joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
               emailVerified: true,
-              displayName: currentUser.displayName || '',
-              username: '',
-              photoURL: null
+              displayName: snapName,
+              username: snapUsername,
+              photoURL: snapPhoto
             });
 
             var data = g.data() || {};

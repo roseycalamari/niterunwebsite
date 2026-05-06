@@ -1630,35 +1630,36 @@ body.dark .user-menu__item {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 0.85rem 0;
+  padding: 0.85rem 0.6rem;
   border-bottom: 1px solid rgba(47, 47, 47, 0.1);
 }
 
 .member-row--admin {
   background: rgba(0, 109, 255, 0.06);
-  border-top: 1px solid rgba(0, 109, 255, 0.18);
-  border-bottom: 1px solid rgba(0, 109, 255, 0.18);
-  padding: 0.95rem 0.6rem;
-  margin: 0 -0.6rem;
 }
 
 .member-row--admin .member-row__avatar {
   background: var(--blue);
 }
 
-.member-row__admin-badge {
+.member-row__badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0.18rem 0.5rem;
   border: 2px solid var(--black);
   box-shadow: 2px 2px 0 var(--black);
-  background: var(--blue);
-  color: var(--cream);
+  background: var(--cream);
+  color: var(--black);
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.member-row__badge--admin {
+  background: var(--blue);
+  color: var(--cream);
 }
 
 .member-row:last-child {
