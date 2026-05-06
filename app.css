@@ -194,6 +194,41 @@ h1, h2, h3, h4 {
   padding: 0.7em 1.4em;
 }
 
+/* WhatsApp brand button — same boxy NiteRun aesthetic, WhatsApp green */
+.btn--whatsapp {
+  background-color: #25D366;
+  color: #fff;
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 var(--black);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--ff-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.9em 1.8em;
+  text-decoration: none;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.btn--whatsapp:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--black);
+  background-color: #1ebe5a;
+}
+
+.btn--whatsapp:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--black);
+}
+
+.btn--whatsapp .btn__icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
 .btn--danger:hover {
   transform: translate(-2px, -2px);
   box-shadow: 5px 5px 0 var(--black);
@@ -508,8 +543,8 @@ body.dark .lang-switch__btn--active {
 
 .topbar__logo-img {
   display: block;
-  height: 50px;
-  width: 50px;
+  height: 60px;
+  width: 60px;
   object-fit: contain;
 }
 
@@ -1490,6 +1525,53 @@ body.dark .user-menu__item {
   opacity: 0.35;
   margin-left: 10px;
   transition: transform 0.15s var(--ease-out), opacity 0.15s ease;
+}
+
+/* Stacked member avatars on each group card (right side, before the arrow) */
+.group-item__avatars {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+}
+
+.group-item__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--cream);
+  background-color: var(--dark);
+  color: var(--cream);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-left: -8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 1px 1px 0 var(--black);
+}
+
+.group-item__avatar:first-child {
+  margin-left: 0;
+}
+
+.group-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.group-item__avatar--initial {
+  text-transform: uppercase;
+}
+
+.group-item__avatar--more {
+  background-color: var(--blue);
+  color: var(--cream);
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
 }
 
 .group-item:hover .group-item__arrow {
@@ -2751,6 +2833,97 @@ body.dark #view-groups .groups-card__note {
   border-bottom: none;
 }
 
+/* ---- "How do I install Nite-Run" educational block (always visible) ---- */
+.install-help {
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed rgba(47, 47, 47, 0.18);
+}
+
+.install-help__details {
+  background-color: rgba(0, 109, 255, 0.05);
+  border: 2px solid var(--black);
+  box-shadow: 3px 3px 0 var(--black);
+  padding: 0.85rem 1rem;
+}
+
+.install-help__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: var(--ff-body);
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--black);
+}
+
+.install-help__summary::-webkit-details-marker {
+  display: none;
+}
+
+.install-help__summary-icon {
+  font-size: 0.9rem;
+  transition: transform 0.18s var(--ease-out);
+}
+
+.install-help__details[open] .install-help__summary-icon {
+  transform: rotate(180deg);
+}
+
+.install-help__intro {
+  margin: 0.85rem 0 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--black);
+  opacity: 0.85;
+}
+
+.install-help__platform {
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(47, 47, 47, 0.12);
+}
+
+.install-help__platform-title {
+  display: block;
+  font-family: var(--ff-body);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 0.5rem;
+}
+
+.install-help__steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.install-help__steps li {
+  margin: 0.25rem 0;
+}
+
+.install-help__steps strong {
+  font-weight: 800;
+}
+
+.install-help__installed {
+  margin: 0.85rem 0 0;
+  padding: 0.55rem 0.7rem;
+  background-color: rgba(46, 184, 116, 0.12);
+  border: 2px solid var(--black);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .setting-row--stacked {
   flex-direction: column;
   align-items: stretch;
@@ -3495,8 +3668,8 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
   }
 
   .topbar__logo-img {
-    height: 50px;
-    width: 50px;
+    height: 58px;
+    width: 58px;
     object-fit: contain;
   }
 
@@ -3526,12 +3699,18 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
   }
 
   .notif-dropdown {
-    /* On phones, anchor to the right of the bell and let it span up to the
-       viewport edge with a small inset. Never use negative offsets, which
-       push the dropdown off-screen on narrow devices like iPhone 13 mini. */
-    width: calc(100vw - 24px);
-    max-width: 320px;
-    right: 0;
+    /* On phones we pin the dropdown to the viewport (not to the bell), so it
+       stays perfectly centered horizontally regardless of the bell's
+       position in the topbar. Without this, .notif-wrap (the small bell
+       container) becomes the offset parent and the 320px panel overflows
+       to the left on narrow devices like iPhone 13 mini. */
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px) + 8px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    margin: 0 auto;
   }
 
   .hub__panel {
@@ -3634,8 +3813,8 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     padding: 0 calc(env(safe-area-inset-right, 0px) + var(--space-sm)) 0 calc(env(safe-area-inset-left, 0px) + var(--space-sm));
   }
   .topbar__logo-img {
-    height: 46px;
-    width: 46px;
+    height: 54px;
+    width: 54px;
   }
 
   /* Cards: generous internal padding so content has room to breathe */
@@ -3697,6 +3876,14 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     font-size: 0.78rem;
   }
 
+  /* On very narrow screens the avatar stack pushes the row over — show fewer */
+  .group-item__avatar:nth-child(n+3) {
+    display: none;
+  }
+  .group-item__avatar--more {
+    display: inline-flex !important;
+  }
+
   /* Settings rows: stop overlap between long label + toggle */
   .setting-row {
     gap: 0.6rem;
@@ -3716,11 +3903,16 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     gap: 0.5rem;
   }
 
-  /* Notification dropdown: span the screen instead of being fixed-width */
+  /* Notification dropdown: pinned to viewport (not the bell wrap) so it
+     sits perfectly centered with safe gutters on tiny phones. */
   .notif-dropdown {
-    width: calc(100vw - 24px);
-    max-width: 320px;
-    right: 0;
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px) + 8px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    margin: 0 auto;
   }
 
   /* Member rows: a little less padding so the avatar+name+button fit */

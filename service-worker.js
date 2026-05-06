@@ -11,7 +11,7 @@
    every installed PWA will purge old caches and refresh on next open.
    ========================================================================== */
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const RUNTIME_CACHE  = 'niterun-runtime-' + CACHE_VERSION;
 const STATIC_CACHE   = 'niterun-static-'  + CACHE_VERSION;
 
