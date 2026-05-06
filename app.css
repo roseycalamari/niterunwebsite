@@ -1329,6 +1329,10 @@ body.dark .user-menu__item {
 
 .search-bar__input {
   flex: 1;
+  /* Critical: allow the input to shrink below its placeholder's intrinsic
+     width so the close button never gets pushed off-screen on narrow phones. */
+  min-width: 0;
+  width: 100%;
   font-family: var(--ff-body);
   font-size: 0.95rem;
   font-weight: 600;
@@ -3521,8 +3525,12 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
   }
 
   .notif-dropdown {
-    width: 280px;
-    right: -40px;
+    /* On phones, anchor to the right of the bell and let it span up to the
+       viewport edge with a small inset. Never use negative offsets, which
+       push the dropdown off-screen on narrow devices like iPhone 13 mini. */
+    width: calc(100vw - 24px);
+    max-width: 320px;
+    right: 0;
   }
 
   .hub__panel {

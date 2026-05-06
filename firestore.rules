@@ -49,7 +49,8 @@ service cloud.firestore {
       }
     }
 
-    // Groups: anyone signed in can read; only admins can update group metadata.
+    // Groups: anyone signed in can read; only admins can update group metadata,
+    // EXCEPT new joiners (signed-in users) who may bump member counts by exactly +1.
     match /groups/{groupId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -57,8 +58,18 @@ service cloud.firestore {
         && request.resource.data.memberCount == 1
         && request.resource.data.verifiedMemberCount == 1;
 
-      // Only admins can update group doc (e.g. counts, name, verification).
-      allow update: if isAdminOfGroup(groupId);
+      // Admins can update anything on the group doc (name, banner, verification, etc.).
+      // Non-admins can only join: they may change ONLY the count fields, and only by
+      // increments of exactly +1, with `isVerified` recomputed accordingly.
+      allow update: if isAdminOfGroup(groupId)
+        || (
+          isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['memberCount', 'verifiedMemberCount', 'isVerified'])
+          && request.resource.data.memberCount == resource.data.memberCount + 1
+          && request.resource.data.verifiedMemberCount == resource.data.verifiedMemberCount + 1
+          && request.resource.data.isVerified == (request.resource.data.verifiedMemberCount >= 10)
+        );
       allow delete: if false;
 
       // Membership: any member of the group can read all member docs (roster + @ mentions in sessions).
