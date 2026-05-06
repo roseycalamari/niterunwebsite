@@ -70,11 +70,15 @@ service cloud.firestore {
           && request.resource.data.verifiedMemberCount == resource.data.verifiedMemberCount + 1
           && request.resource.data.isVerified == (request.resource.data.verifiedMemberCount >= 10)
         );
-      allow delete: if false;
+      // Only group admins can delete the group document.
+      allow delete: if isAdminOfGroup(groupId);
 
       // Membership: any member of the group can read all member docs (roster + @ mentions in sessions).
+      // ALSO: a user may always read THEIR OWN potential member doc (so the join-by-code
+      // transaction can check whether they are already a member without being denied).
       match /members/{memberId} {
-        allow read: if isMemberOfGroup(groupId);
+        allow read: if isMemberOfGroup(groupId)
+                    || (isSignedIn() && memberId == request.auth.uid);
 
         // Joining: user can create their own member doc.
         allow create: if isSignedIn() && memberId == request.auth.uid;
@@ -88,7 +92,10 @@ service cloud.firestore {
                    .hasOnly(['displayName', 'username', 'photoURL']))
           );
 
-        allow delete: if false;
+        // Members can leave (delete their own member doc); admins can remove anyone (used during
+        // group deletion to clean up the subcollection).
+        allow delete: if isSignedIn()
+          && (isAdminOfGroup(groupId) || memberId == request.auth.uid);
       }
     }
 

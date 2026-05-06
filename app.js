@@ -1570,6 +1570,31 @@
       };
     }
 
+    // Danger zone (admin-only): delete the group entirely.
+    var dangerZone = document.getElementById('groupDangerZone');
+    var deleteBtn = document.getElementById('groupDeleteBtn');
+    if (dangerZone && deleteBtn) {
+      var iAmAdmin = !!(g && g.myRole === 'admin');
+      dangerZone.style.display = iAmAdmin ? '' : 'none';
+      if (iAmAdmin) {
+        deleteBtn.onclick = function () {
+          if (!g) return;
+          var name = g.name || 'this group';
+          var prompt = t('modal.delete_group.body', { name: name }) ||
+            ('Delete "' + name + '"? This will remove all members and cannot be undone.');
+          showModal({
+            title: t('modal.delete_group.title') || 'Delete group?',
+            message: prompt,
+            confirmText: t('modal.action.delete') || 'Delete',
+            danger: true,
+            onConfirm: function () { deleteOfficialGroup(g.id); }
+          });
+        };
+      } else {
+        deleteBtn.onclick = null;
+      }
+    }
+
     var startBtn = document.getElementById('groupDetailStartSession');
     if (startBtn) {
       var canStart = !!(g && g.myRole === 'admin' && g.isVerified);
@@ -2020,10 +2045,83 @@
       try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'joinGroup'); } catch (e2) {}
       var msg = t('toast.group_join_failed');
       var c = err && err.code ? String(err.code) : '';
+      // Surface the exact error code on localhost so we can debug rule issues quickly.
+      try {
+        if (window.location && window.location.hostname === 'localhost' && c) {
+          showToast('Join failed: ' + c + (err && err.message ? ' — ' + err.message : ''), 'info');
+          return;
+        }
+      } catch (eDev) {}
       if (c === 'permission-denied') msg = t('toast.error.permission');
       else if (c === 'unavailable') msg = t('toast.error.offline');
       showToast(msg, 'info');
     });
+  }
+
+  /* ---------- DELETE OFFICIAL GROUP (admin only) ---------- */
+  function deleteOfficialGroup(gid) {
+    if (!currentUser || !db || !gid) return;
+
+    showToast(t('toast.group_deleting') || 'Deleting group…', 'info');
+
+    var groupRef = db.collection('groups').doc(gid);
+    var membersRef = groupRef.collection('members');
+
+    // 1) Fetch all member docs (admin can read because they're a member).
+    membersRef.get().then(function (snap) {
+      // 2) Delete all member docs in batches of 400 (Firestore batch limit is 500 writes).
+      var docs = snap.docs.slice();
+      function deleteNextBatch() {
+        if (docs.length === 0) return Promise.resolve();
+        var chunk = docs.splice(0, 400);
+        var batch = db.batch();
+        chunk.forEach(function (d) { batch.delete(d.ref); });
+        return batch.commit().then(deleteNextBatch);
+      }
+      return deleteNextBatch();
+    })
+      // 3) Delete the group doc itself.
+      .then(function () { return groupRef.delete(); })
+      // 4) Best-effort: remove this gid from the admin's own user.groupIds (others
+      //    will self-clean on next load when the group doc is missing).
+      .then(function () {
+        return db.collection('users').doc(currentUser.uid).update({
+          groupIds: firebase.firestore.FieldValue.arrayRemove(gid),
+          groupCount: firebase.firestore.FieldValue.increment(-1)
+        }).catch(function () {});
+      })
+      // 5) Best-effort: delete the banner image from Storage (ignore if not present).
+      .then(function () {
+        if (!storage) return;
+        try {
+          return storage.ref().child('group-banners/' + gid + '/banner.jpg').delete().catch(function () {});
+        } catch (eStor) {}
+      })
+      .then(function () {
+        // Update local state and navigate back to groups list.
+        try {
+          officialGroups = officialGroups.filter(function (og) { return og && og.id !== gid; });
+          if (selectedGroup && selectedGroup.id === gid) selectedGroup = null;
+          if (selectedGroupId === gid) selectedGroupId = '';
+        } catch (eClean) {}
+
+        showToast(t('toast.group_deleted') || 'Group deleted.', 'success');
+        switchView('groups');
+      })
+      .catch(function (err) {
+        console.error('Delete group error:', err);
+        try { window.NiteRunErrors && window.NiteRunErrors.log(err, 'deleteGroup'); } catch (eLog) {}
+        var c = err && err.code ? String(err.code) : '';
+        try {
+          if (window.location && window.location.hostname === 'localhost' && c) {
+            showToast('Delete failed: ' + c + (err && err.message ? ' — ' + err.message : ''), 'info');
+            return;
+          }
+        } catch (eDev2) {}
+        if (c === 'permission-denied') showToast(t('toast.error.permission'), 'info');
+        else if (c === 'unavailable') showToast(t('toast.error.offline'), 'info');
+        else showToast(t('toast.group_delete_failed') || 'Could not delete group.', 'info');
+      });
   }
 
   /* ---------- POPULATE USER INFO ---------- */
