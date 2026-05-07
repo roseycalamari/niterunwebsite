@@ -511,15 +511,22 @@ body.dark .lang-switch__btn--active {
   bottom: 6px;
   left: 0;
   width: 60px;
-  background: rgba(255, 255, 255, 0.85);
+  /* Soft frosted highlight, not a solid block — keeps the glass feel */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.7) 100%
+    );
   border-radius: 999px;
   pointer-events: none;
   transform: translateX(0);
   transition: transform 0.42s cubic-bezier(0.5, 0, 0.1, 1),
               width 0.32s cubic-bezier(0.5, 0, 0.1, 1);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(47, 47, 47, 0.05);
   z-index: 0;
 }
 
@@ -3649,21 +3656,34 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     z-index: 50;
     padding: 6px;
     border-radius: 999px;
-    /* Liquid-glass surface */
-    background: rgba(255, 252, 239, 0.55);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-            backdrop-filter: blur(22px) saturate(180%);
-    border: 1px solid rgba(47, 47, 47, 0.12);
+    /* Liquid-glass surface — much more transparent + a glossy top sheen.
+       The two background layers stack:
+         1. a soft white→clear gradient that gives the pill its highlight,
+         2. a very faint cream tint so it still reads on busy backgrounds. */
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.18) 45%,
+        rgba(255, 255, 255, 0.08) 100%
+      ),
+      rgba(255, 252, 239, 0.18);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+            backdrop-filter: blur(28px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
     box-shadow:
-      0 8px 28px rgba(0, 0, 0, 0.16),
+      0 10px 32px rgba(0, 0, 0, 0.18),
       0 2px 6px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(47, 47, 47, 0.06);
   }
 
-  /* Fallback for browsers without backdrop-filter (older Android Chrome): */
+  /* Fallback for browsers without backdrop-filter (older Android Chrome).
+     Without blur, full transparency would be unreadable, so we fall back
+     to a near-opaque cream pill. */
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .tabbar {
-      background: rgba(255, 252, 239, 0.95);
+      background: rgba(255, 252, 239, 0.92);
     }
   }
 
@@ -4792,12 +4812,20 @@ body.dark .sidebar__link--back:hover {
 
 /* ---- Mobile tab bar (liquid glass — dark variant) ---- */
 body.dark .tabbar {
-  background: rgba(20, 20, 24, 0.55);
-  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(255, 255, 255, 0.00) 100%
+    ),
+    rgba(20, 20, 24, 0.22);
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.5),
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 10px 32px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
 body.dark .tabbar__btn {
@@ -4805,15 +4833,20 @@ body.dark .tabbar__btn {
 }
 
 body.dark .tabbar__pill {
-  background: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 100%
+    );
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   body.dark .tabbar {
-    background: rgba(20, 20, 24, 0.95);
+    background: rgba(20, 20, 24, 0.92);
   }
 }
 
