@@ -189,22 +189,14 @@
     var tourBtn = document.getElementById('settingsTourBtn');
     var installRow = document.getElementById('settingsInstallRow');
     var installInstalled = document.getElementById('installHelpInstalled');
-    var iosBlock = document.getElementById('installHelpIos');
-    var androidBlock = document.getElementById('installHelpAndroid');
-    var desktopBlock = document.getElementById('installHelpDesktop');
     var detailsEl = document.getElementById('settingsInstallDetails');
 
     var isInstalled = !!(window.NiteRunPWA && window.NiteRunPWA.alreadyInstalled());
 
-    // Detect platform once so we can highlight the right instructions and hide the others
     var ua = navigator.userAgent || '';
     var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-    var isAndroid = /Android/.test(ua);
-    var isMobile = isIOS || isAndroid;
 
-    if (iosBlock) iosBlock.style.display = isIOS ? '' : 'none';
-    if (androidBlock) androidBlock.style.display = isAndroid ? '' : 'none';
-    if (desktopBlock) desktopBlock.style.display = (!isMobile) ? '' : 'none';
+    // Both phone platforms are always shown — the app is mobile-first, no desktop block.
 
     if (isInstalled) {
       // Keep the row visible so the educational content is always there, but
@@ -1190,35 +1182,9 @@
       db.collection('groups').doc(gid).get().then(function (gdoc) {
         if (!gdoc.exists) return;
         var g = gdoc.data() || {};
-        var meRef = db.collection('groups').doc(gid).collection('members').doc(currentUser.uid);
-        // Fetch up to 8 member docs to render an avatar stack on the group card.
-        // Admins are shown first (then most recent joiners). Failures are non-fatal.
-        var membersRef = db.collection('groups').doc(gid).collection('members').limit(20);
-        return Promise.all([meRef.get(), membersRef.get()]).then(function (arr) {
-          var mdoc = arr[0];
-          var msnap = arr[1];
+        return db.collection('groups').doc(gid).collection('members').doc(currentUser.uid).get().then(function (mdoc) {
           var role = 'member';
           if (mdoc.exists) role = (mdoc.data().role || 'member');
-
-          var previewMembers = [];
-          if (msnap && !msnap.empty) {
-            var raw = [];
-            msnap.forEach(function (mdocItem) {
-              var md = mdocItem.data() || {};
-              raw.push({
-                isAdmin: md.role === 'admin',
-                displayName: md.displayName || '',
-                photoURL: md.photoURL || null,
-                joinedAt: md.joinedAt && typeof md.joinedAt.toMillis === 'function' ? md.joinedAt.toMillis() : 0
-              });
-            });
-            raw.sort(function (a, b) {
-              if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1;
-              return (b.joinedAt || 0) - (a.joinedAt || 0);
-            });
-            previewMembers = raw.slice(0, 4);
-          }
-
           results.push({
             id: gid,
             name: g.name || 'Group',
@@ -1229,8 +1195,7 @@
             createdAt: g.createdAt || null,
             bannerURL: g.bannerURL || null,
             whatsappURL: g.whatsappURL || null,
-            myRole: role,
-            previewMembers: previewMembers
+            myRole: role
           });
         });
       }).catch(function () {}).finally(function () {
@@ -1318,27 +1283,6 @@
         : t('app.groups.status_progress', { count: v });
       var roleTag = g.myRole === 'admin' ? t('app.groups.role_admin') : t('app.groups.role_member');
 
-      var preview = Array.isArray(g.previewMembers) ? g.previewMembers : [];
-      var stackHtml = '';
-      if (preview.length) {
-        var visible = preview.slice(0, 4);
-        var extra = Math.max(0, (g.memberCount || 0) - visible.length);
-        var avatarsHtml = visible.map(function (m) {
-          var letter = (m.displayName || 'P').charAt(0).toUpperCase();
-          if (m.photoURL) {
-            return '<span class="group-item__avatar" title="' + escapeHtml(m.displayName || '') + '">' +
-                   '<img src="' + escapeHtml(m.photoURL) + '" alt="" loading="lazy">' +
-                   '</span>';
-          }
-          return '<span class="group-item__avatar group-item__avatar--initial" title="' +
-                 escapeHtml(m.displayName || '') + '">' + escapeHtml(letter) + '</span>';
-        }).join('');
-        var moreHtml = extra > 0
-          ? '<span class="group-item__avatar group-item__avatar--more">+' + extra + '</span>'
-          : '';
-        stackHtml = '<div class="group-item__avatars" aria-hidden="true">' + avatarsHtml + moreHtml + '</div>';
-      }
-
       item.innerHTML =
         '<div class="group-item__info">' +
           '<div class="group-item__badge">' + initial + '</div>' +
@@ -1348,7 +1292,6 @@
           '</div>' +
         '</div>' +
         '<div class="roster__actions">' +
-          stackHtml +
           (verified && g.myRole === 'admin'
             ? '<button class="roster__btn roster__btn--edit" data-create-session="' + g.id + '" data-i18n-title="app.groups.action_create_session" title="' + escapeHtml(t('app.groups.action_create_session')) + '">+</button>'
             : '') +
