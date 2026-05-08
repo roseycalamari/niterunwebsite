@@ -428,8 +428,13 @@ body.dark .lang-switch__btn--active {
   width: 130px;
   height: auto;
   margin: 0 auto;
-  filter: brightness(0) invert(1);
+  filter: none;
+  transform: scale(var(--sidebar-logo-scale, 1));
+  transform-origin: center;
 }
+
+.sidebar__logo-img[data-logo-mode="light"] { --sidebar-logo-scale: 1.10; }
+.sidebar__logo-img[data-logo-mode="dark"]  { --sidebar-logo-scale: 1; }
 
 .sidebar__nav {
   display: flex;
@@ -511,22 +516,26 @@ body.dark .lang-switch__btn--active {
   bottom: 6px;
   left: 0;
   width: 60px;
-  /* Soft frosted highlight, not a solid block — keeps the glass feel */
+  /* The active-tab pill is a smaller liquid-glass capsule — bright at the
+     top with a clear gradient drop-off, so it reads as a glossy lens
+     sitting inside the larger glass bar rather than a flat white sticker. */
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 255, 255, 0.7) 100%
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.22) 60%,
+      rgba(255, 255, 255, 0.10) 100%
     );
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 999px;
   pointer-events: none;
   transform: translateX(0);
   transition: transform 0.42s cubic-bezier(0.5, 0, 0.1, 1),
               width 0.32s cubic-bezier(0.5, 0, 0.1, 1);
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 rgba(47, 47, 47, 0.05);
+    0 1px 4px rgba(0, 0, 0, 0.12),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
   z-index: 0;
 }
 
@@ -609,14 +618,31 @@ body.dark .lang-switch__btn--active {
   border: none;
   padding: 0;
   cursor: pointer;
+  /* Fixed frame so light/dark assets align perfectly */
+  width: 60px;
+  height: 60px;
+  position: relative;
 }
 
 .topbar__logo-img {
+  /* Always center inside the frame; scaling won't shift placement */
   display: block;
-  height: 60px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 60px;
+  height: 60px;
   object-fit: contain;
+  background: transparent;
+  transform: translate(-50%, -50%) scale(var(--logo-scale, 1));
+  transform-origin: center;
 }
+
+/* The blue light-mode logo has more internal padding than the cream dark-mode
+   asset, so it *looks* smaller. Scale it up but keep the same exact anchor. */
+.topbar__logo-img[data-logo-mode="light"] { --logo-scale: 1.18; }
+
+.topbar__logo-img[data-logo-mode="dark"]  { --logo-scale: 1; }
 
 .topbar__title {
   font-size: clamp(1rem, 1.8vw, 1.4rem);
@@ -3645,6 +3671,18 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     display: none;
   }
 
+  /* ============================================================
+     LIQUID GLASS — bottom tab bar (Apple-style)
+     The illusion is built from THREE stacked layers:
+       1. A nearly-fully-transparent surface (`background`) that lets
+          the wallpaper through almost untouched.
+       2. A heavy `backdrop-filter` (blur + saturate + brightness) that
+          smears and re-vivifies the colours sitting behind it — this is
+          what creates the "wet, refracting" look.
+       3. Stacked box-shadows + pseudo-elements that simulate the bright
+          rim and the specular highlight at the top of a glass capsule,
+          since CSS can't do real refraction.
+     ============================================================ */
   .tabbar {
     display: flex;
     align-items: center;
@@ -3656,26 +3694,66 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
     z-index: 50;
     padding: 6px;
     border-radius: 999px;
-    /* Liquid-glass surface — much more transparent + a glossy top sheen.
-       The two background layers stack:
-         1. a soft white→clear gradient that gives the pill its highlight,
-         2. a very faint cream tint so it still reads on busy backgrounds. */
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.55) 0%,
-        rgba(255, 255, 255, 0.18) 45%,
-        rgba(255, 255, 255, 0.08) 100%
-      ),
-      rgba(255, 252, 239, 0.18);
-    -webkit-backdrop-filter: blur(28px) saturate(200%);
-            backdrop-filter: blur(28px) saturate(200%);
-    border: 1px solid rgba(255, 255, 255, 0.55);
+    /* Almost fully transparent — let the background show through. */
+    background: rgba(255, 255, 255, 0.04);
+    -webkit-backdrop-filter: blur(34px) saturate(240%) brightness(1.08);
+            backdrop-filter: blur(34px) saturate(240%) brightness(1.08);
+    /* Bright thin glass rim — the visible "edge" of the lens */
+    border: 1px solid rgba(255, 255, 255, 0.45);
     box-shadow:
-      0 10px 32px rgba(0, 0, 0, 0.18),
-      0 2px 6px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 0 rgba(47, 47, 47, 0.06);
+      /* outer drop shadow so the pill floats off the page */
+      0 14px 40px rgba(0, 0, 0, 0.22),
+      0 4px 10px rgba(0, 0, 0, 0.10),
+      /* inner top specular highlight — the "wet" sheen along the top edge */
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+      /* inner left/right rim glints (refraction at the curved edges) */
+      inset 1px 0 1px rgba(255, 255, 255, 0.30),
+      inset -1px 0 1px rgba(255, 255, 255, 0.30),
+      /* a soft inner bottom shadow that adds depth like real glass */
+      inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    /* Allow ::before / ::after positioning for the gloss highlights */
+    overflow: visible;
+    isolation: isolate;
+  }
+
+  /* Top "wet" specular reflection — a soft white arc that catches light
+     near the upper edge of the capsule, like glossy glass. */
+  .tabbar::before {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 6%;
+    right: 6%;
+    height: 45%;
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.18) 55%,
+      rgba(255, 255, 255, 0.00) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* A faint *outer* refraction halo so the rim feels like it's bending
+     the colour behind it (one extra ring of brightness around the edge). */
+  .tabbar::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 999px;
+    pointer-events: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+      inset 0 0 8px rgba(255, 255, 255, 0.10);
+    z-index: 0;
+  }
+
+  /* Buttons must sit ABOVE the gloss layers */
+  .tabbar__btn,
+  .tabbar__pill {
+    z-index: 1;
   }
 
   /* Fallback for browsers without backdrop-filter (older Android Chrome).
@@ -3684,6 +3762,10 @@ body.dark .skel-row { border-color: rgba(255, 252, 239, 0.08); background: trans
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .tabbar {
       background: rgba(255, 252, 239, 0.92);
+    }
+    .tabbar::before,
+    .tabbar::after {
+      display: none;
     }
   }
 
@@ -4812,20 +4894,30 @@ body.dark .sidebar__link--back:hover {
 
 /* ---- Mobile tab bar (liquid glass — dark variant) ---- */
 body.dark .tabbar {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.10) 0%,
-      rgba(255, 255, 255, 0.04) 50%,
-      rgba(255, 255, 255, 0.00) 100%
-    ),
-    rgba(20, 20, 24, 0.22);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.22);
   box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.55),
-    0 2px 6px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.30),
+    inset 1px 0 1px rgba(255, 255, 255, 0.10),
+    inset -1px 0 1px rgba(255, 255, 255, 0.10),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+body.dark .tabbar::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0.10) 60%,
+    rgba(255, 255, 255, 0.00) 100%
+  );
+}
+
+body.dark .tabbar::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 0 8px rgba(255, 255, 255, 0.06);
 }
 
 body.dark .tabbar__btn {
@@ -4836,12 +4928,13 @@ body.dark .tabbar__pill {
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.08) 100%
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.06) 100%
     );
+  border-color: rgba(255, 255, 255, 0.20);
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 1px 4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
@@ -4972,7 +5065,7 @@ body.dark .profile__username {
 }
 
 body.dark .topbar__logo-img {
-  background-color: var(--cream);
+  background-color: transparent;
 }
 
 /* ---- Cards (main surface) ---- */

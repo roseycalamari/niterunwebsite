@@ -959,16 +959,32 @@
     var isDark = false;
     try { isDark = localStorage.getItem(DARK_KEY) === '1'; } catch (e) {}
 
+    function syncThemeAssets() {
+      try {
+        var on = document.body.classList.contains('dark');
+        var imgs = document.querySelectorAll('img[data-logo-light][data-logo-dark]');
+        imgs.forEach(function (img) {
+          var lightSrc = img.getAttribute('data-logo-light') || '';
+          var darkSrc = img.getAttribute('data-logo-dark') || '';
+          if (!lightSrc || !darkSrc) return;
+          img.src = on ? darkSrc : lightSrc;
+          try { img.setAttribute('data-logo-mode', on ? 'dark' : 'light'); } catch (e2) {}
+        });
+      } catch (e) {}
+    }
+
     if (isDark) {
       document.body.classList.add('dark');
       if (els.toggleDark) els.toggleDark.checked = true;
     }
+    syncThemeAssets();
 
     if (els.toggleDark) {
       els.toggleDark.addEventListener('change', function () {
         var on = els.toggleDark.checked;
         document.body.classList.toggle('dark', on);
         try { localStorage.setItem(DARK_KEY, on ? '1' : '0'); } catch (e) {}
+        syncThemeAssets();
       });
     }
   }
