@@ -1920,6 +1920,7 @@
         var iAmAdmin = !!(g && g.myRole === 'admin');
 
         var items = [];
+        var missingPhotoUids = [];
         snapshot.forEach(function (doc) {
           var memberId = doc.id;
           var d = doc.data() || {};
@@ -1928,6 +1929,7 @@
           var roleLabel = isAdmin ? t('app.groups.role_admin') : t('app.groups.role_member');
           var initial = (nm || 'P').charAt(0).toUpperCase();
           var photo = d.photoURL || '';
+          if (!photo) missingPhotoUids.push(memberId);
           items.push({
             id: memberId,
             nm: nm,
@@ -1960,7 +1962,7 @@
             : ('<span class="member-row__badge">' + escapeHtml(m.roleLabel) + '</span>');
 
           return (
-            '<div class="member-row' + (m.isAdmin ? ' member-row--admin' : '') + '">' +
+            '<div class="member-row' + (m.isAdmin ? ' member-row--admin' : '') + '" data-member-uid="' + escapeHtml(m.id) + '">' +
               '<div class="member-row__left">' +
                 '<div class="member-row__avatar">' + avatarHtml + '</div>' +
                 '<div class="member-row__info">' +
@@ -1982,6 +1984,45 @@
         }
 
         wrap.innerHTML = rows.join('');
+
+        // Backfill avatars for older member docs:
+        // - We NEVER block initial render (fast UI)
+        // - We fetch users/{uid}.photoURL for missing ones and patch the DOM
+        // - If I'm admin, also write photoURL into the member doc so everyone benefits
+        try {
+          if (missingPhotoUids && missingPhotoUids.length) {
+            var uniq = {};
+            missingPhotoUids.forEach(function (u) { uniq[u] = true; });
+            var uids = Object.keys(uniq).slice(0, 20); // keep it small
+            Promise.all(uids.map(function (uid) {
+              return db.collection('users').doc(uid).get().then(function (udoc) {
+                var d = udoc && udoc.exists ? (udoc.data() || {}) : {};
+                var url = d.photoURL ? String(d.photoURL) : '';
+                if (!url) return null;
+
+                // Update in-place (DOM)
+                try {
+                  var nameNode = wrap.querySelector('[data-member-uid="' + uid.replace(/"/g, '\\"') + '"]');
+                  if (nameNode) {
+                    var row = nameNode.closest('.member-row');
+                    var avatar = row ? row.querySelector('.member-row__avatar') : null;
+                    if (avatar && !avatar.querySelector('img')) {
+                      avatar.innerHTML = '<img class="member-row__avatar-img" src="' + escapeHtml(url) + '" alt="">';
+                    }
+                  }
+                } catch (e1) {}
+
+                // Persist (admin only) so everyone sees it next time
+                if (iAmAdmin) {
+                  return db.collection('groups').doc(gid).collection('members').doc(uid)
+                    .set({ photoURL: url }, { merge: true })
+                    .catch(function () { return null; });
+                }
+                return null;
+              }).catch(function () { return null; });
+            })).then(function () {}).catch(function () {});
+          }
+        } catch (e0) {}
 
         wrap.querySelectorAll('[data-promote-uid]').forEach(function (btn) {
           btn.addEventListener('click', function () {
