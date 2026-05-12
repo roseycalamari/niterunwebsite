@@ -36,6 +36,14 @@ function getSubject(type, data) {
       return esc(data.fromName || "Someone") + " accepted your friend request";
     case "welcome":
       return "Welcome to NiteRun";
+    case "group_member_joined_admin":
+      return (data && data.groupName)
+        ? (`New member joined ${esc(data.groupName)}`)
+        : "New member joined your group";
+    case "group_verified_admin":
+      return (data && data.groupName)
+        ? (`${esc(data.groupName)} is now verified`)
+        : "Your group is now verified";
     default:
       return "New notification from NiteRun";
   }
@@ -563,6 +571,82 @@ function buildGenericEmail(data) {
   return shell("Notification", BL, inner);
 }
 
+/* ============================================================
+   ADMIN — GROUP UPDATES
+   ============================================================ */
+function buildGroupMemberJoinedAdminEmail(data) {
+  const groupName = esc(data.groupName || "your group");
+  const memberName = esc(data.memberName || "A new member");
+  const count = typeof data.memberCount === "number" ? String(data.memberCount) : "";
+
+  const inner = `
+  <tr>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("GROUP UPDATE", BL)}
+      ${heading("NEW MEMBER", 24)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:18px 28px 0;text-align:center;">
+      ${body(`${memberName} joined <strong>${groupName}</strong>.`)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:22px 28px 0;">
+      ${infoCard("GROUP", groupName, BL)}
+    </td>
+  </tr>
+  ${count ? `
+  <tr>
+    <td style="padding:12px 28px 0;">
+      ${infoCard("MEMBERS", esc(count), BL)}
+    </td>
+  </tr>` : ``}
+  <tr>
+    <td style="padding:26px 28px 36px;text-align:center;">
+      ${cta("OPEN GROUP", BL)}
+    </td>
+  </tr>`;
+
+  return shell("Group update", BL, inner);
+}
+
+function buildGroupVerifiedAdminEmail(data) {
+  const groupName = esc(data.groupName || "your group");
+  const verified = typeof data.verifiedMemberCount === "number" ? String(data.verifiedMemberCount) : "";
+
+  const inner = `
+  <tr>
+    <td style="padding:32px 28px 0;text-align:center;">
+      ${eyebrow("MILESTONE", GR)}
+      ${heading("GROUP VERIFIED", 24)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:18px 28px 0;text-align:center;">
+      ${body(`<strong>${groupName}</strong> just reached verified status.`)}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:22px 28px 0;">
+      ${infoCard("GROUP", groupName, GR)}
+    </td>
+  </tr>
+  ${verified ? `
+  <tr>
+    <td style="padding:12px 28px 0;">
+      ${infoCard("VERIFIED MEMBERS", esc(verified), GR)}
+    </td>
+  </tr>` : ``}
+  <tr>
+    <td style="padding:26px 28px 36px;text-align:center;">
+      ${cta("OPEN NITERUN", BL)}
+    </td>
+  </tr>`;
+
+  return shell("Verified", GR, inner);
+}
+
 
 /* ============================================================
    EXPORTS
@@ -574,6 +658,8 @@ function buildEmail(type, data) {
     case "session_invite":   return buildSessionInviteEmail(data);
     case "mvp_award":        return buildMvpAwardEmail(data);
     case "session_closed":   return buildSessionClosedEmail(data);
+    case "group_member_joined_admin": return buildGroupMemberJoinedAdminEmail(data);
+    case "group_verified_admin":      return buildGroupVerifiedAdminEmail(data);
     case "welcome":          return buildWelcomeEmail(data);
     default:                 return buildGenericEmail(data);
   }

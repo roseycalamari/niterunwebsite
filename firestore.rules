@@ -28,10 +28,23 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == userId;
+      // Owner updates: cannot self-set billing / subscription fields (Stripe webhook only).
+      // Other users: may only bump social counters / friends list.
       allow update: if request.auth != null
-                    && (request.auth.uid == userId
-                        || request.resource.data.diff(resource.data).affectedKeys()
-                           .hasOnly(['friends', 'friendCount', 'sessionsPlayed', 'mvpCount']));
+                    && (
+                      (
+                        request.auth.uid == userId
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                          'plan', 'planStatus', 'planActiveUntil', 'stripeCustomerId',
+                          'stripeSubscriptionId', 'planUpdatedAt'
+                        ])
+                      )
+                      || (
+                        request.auth.uid != userId
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['friends', 'friendCount', 'sessionsPlayed', 'mvpCount'])
+                      )
+                    );
       allow delete: if false;
 
       // Notifications: owner full access; any authenticated user can create (to send notifs)

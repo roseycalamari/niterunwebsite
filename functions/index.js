@@ -1,6 +1,6 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
@@ -8,12 +8,18 @@ const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
 const { Resend } = require("resend");
 const crypto = require("crypto");
+const express = require("express");
+const Stripe = require("stripe");
 
 initializeApp();
 const db = getFirestore();
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const RESEND_WEBHOOK_SECRET = defineSecret("RESEND_WEBHOOK_SECRET");
+const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
+const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
+/** Default Stripe Price ID for NiteRun Pro (test or live). Set at deploy: firebase functions:config:set is legacy; use params in console or CLI. */
+const STRIPE_PRICE_PRO = defineString("STRIPE_PRICE_PRO", { default: "" });
 const FROM_EMAIL = "NiteRun <notifications@niterun.app>";
 
 const {
@@ -360,6 +366,387 @@ exports.sendNotificationEmail = onDocumentCreated(
       console.error("Failed to send notification email:", err);
     }
   }
+);
+
+/* ----------------------------------------------------------
+   Cloud Function: admin email when a member joins a group
+   ---------------------------------------------------------- */
+exports.sendGroupAdminEmailOnJoin = onDocumentCreated(
+  {
+    document: "groups/{groupId}/members/{memberId}",
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const { groupId, memberId } = event.params;
+    const memberData = snap.data() || {};
+
+    try {
+      const groupRef = db.collection("groups").doc(groupId);
+      const groupSnap = await groupRef.get();
+      if (!groupSnap.exists) return;
+      const group = groupSnap.data() || {};
+
+      // Find admin uids for the group
+      const adminsSnap = await groupRef.collection("members").where("role", "==", "admin").get();
+      if (adminsSnap.empty) return;
+
+      const adminUids = adminsSnap.docs.map((d) => d.id).filter((uid) => uid && uid !== memberId);
+      if (adminUids.length === 0) return;
+
+      // Prefer the member doc snapshot info; fall back to users/{uid}
+      let memberName = memberData.displayName || "";
+      let memberPhoto = memberData.photoURL || "";
+      if (!memberName || !memberPhoto) {
+        try {
+          const u = await db.collection("users").doc(memberId).get();
+          if (u.exists) {
+            const ud = u.data() || {};
+            if (!memberName) memberName = ud.displayName || "";
+            if (!memberPhoto) memberPhoto = ud.photoURL || "";
+          }
+        } catch (e) {}
+      }
+
+      const payload = {
+        type: "group_member_joined_admin",
+        groupId,
+        groupName: group.name || "",
+        memberId,
+        memberName,
+        memberPhoto,
+        memberCount: typeof group.memberCount === "number" ? group.memberCount : undefined,
+      };
+
+      const resend = new Resend(RESEND_API_KEY.value());
+      const auth = getAuth();
+
+      await Promise.all(
+        adminUids.map(async (uid) => {
+          try {
+            const userDoc = await db.collection("users").doc(uid).get();
+            if (!userDoc.exists) return;
+            const userData = userDoc.data() || {};
+            if (userData.emailNotifications === false) return;
+
+            const userRecord = await auth.getUser(uid);
+            const email = userRecord && userRecord.email ? String(userRecord.email) : null;
+            if (!email) return;
+
+            const subject = getSubject(payload.type, payload);
+            const html = buildEmail(payload.type, payload);
+
+            const resp = await resend.emails.send({
+              from: FROM_EMAIL,
+              to: [email],
+              subject,
+              html,
+              headers: { "List-Unsubscribe": `<${PREFERENCES_URL}>` },
+            });
+
+            await logEmailAttempt({
+              type: payload.type,
+              to: email,
+              uid,
+              ok: true,
+              provider: "resend",
+              providerId: resp && resp.data ? resp.data.id : null,
+              groupId,
+            });
+          } catch (err) {
+            await logEmailAttempt({
+              type: payload.type,
+              to: null,
+              uid,
+              ok: false,
+              provider: "resend",
+              error: String(err && (err.message || err)),
+              groupId,
+            });
+          }
+        })
+      );
+    } catch (err) {
+      console.error("sendGroupAdminEmailOnJoin failed:", err);
+    }
+  }
+);
+
+/* ----------------------------------------------------------
+   Cloud Function: admin email when group becomes verified (>=10)
+   ---------------------------------------------------------- */
+exports.sendGroupAdminEmailOnVerified = onDocumentUpdated(
+  {
+    document: "groups/{groupId}",
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const before = event.data && event.data.before ? event.data.before.data() : null;
+    const afterSnap = event.data && event.data.after ? event.data.after : null;
+    if (!before || !afterSnap) return;
+
+    const after = afterSnap.data() || {};
+    const { groupId } = event.params;
+
+    const wasVerified = before.isVerified === true;
+    const isVerified = after.isVerified === true;
+    if (wasVerified || !isVerified) return; // only send on false -> true transition
+
+    try {
+      const groupRef = db.collection("groups").doc(groupId);
+      const adminsSnap = await groupRef.collection("members").where("role", "==", "admin").get();
+      if (adminsSnap.empty) return;
+      const adminUids = adminsSnap.docs.map((d) => d.id).filter(Boolean);
+
+      const payload = {
+        type: "group_verified_admin",
+        groupId,
+        groupName: after.name || "",
+        verifiedMemberCount:
+          typeof after.verifiedMemberCount === "number" ? after.verifiedMemberCount : undefined,
+      };
+
+      const resend = new Resend(RESEND_API_KEY.value());
+      const auth = getAuth();
+
+      await Promise.all(
+        adminUids.map(async (uid) => {
+          try {
+            const userDoc = await db.collection("users").doc(uid).get();
+            if (!userDoc.exists) return;
+            const userData = userDoc.data() || {};
+            if (userData.emailNotifications === false) return;
+
+            const userRecord = await auth.getUser(uid);
+            const email = userRecord && userRecord.email ? String(userRecord.email) : null;
+            if (!email) return;
+
+            const subject = getSubject(payload.type, payload);
+            const html = buildEmail(payload.type, payload);
+
+            const resp = await resend.emails.send({
+              from: FROM_EMAIL,
+              to: [email],
+              subject,
+              html,
+              headers: { "List-Unsubscribe": `<${PREFERENCES_URL}>` },
+            });
+
+            await logEmailAttempt({
+              type: payload.type,
+              to: email,
+              uid,
+              ok: true,
+              provider: "resend",
+              providerId: resp && resp.data ? resp.data.id : null,
+              groupId,
+            });
+          } catch (err) {
+            await logEmailAttempt({
+              type: payload.type,
+              to: null,
+              uid,
+              ok: false,
+              provider: "resend",
+              error: String(err && (err.message || err)),
+              groupId,
+            });
+          }
+        })
+      );
+    } catch (err) {
+      console.error("sendGroupAdminEmailOnVerified failed:", err);
+    }
+  }
+);
+
+
+/* ----------------------------------------------------------
+   Stripe — Checkout (callable) + Webhook (Express raw body)
+   ---------------------------------------------------------- */
+
+/**
+ * Map Stripe subscription status → Firestore plan fields.
+ */
+async function applySubscriptionToUser(uid, subscription) {
+  if (!uid || !subscription) return;
+  const status = subscription.status;
+  const subId = subscription.id;
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer && subscription.customer.id;
+
+  const activeLike =
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due";
+  const ended =
+    status === "canceled" ||
+    status === "unpaid" ||
+    status === "incomplete_expired";
+
+  if (ended) {
+    await db.collection("users").doc(uid).set(
+      {
+        plan: "free",
+        planStatus: status || "canceled",
+        stripeSubscriptionId: null,
+        stripeCustomerId: customerId || null,
+        planUpdatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return;
+  }
+
+  await db.collection("users").doc(uid).set(
+    {
+      plan: activeLike ? "pro" : "free",
+      planStatus: status,
+      stripeSubscriptionId: subId,
+      stripeCustomerId: customerId || null,
+      planUpdatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+exports.createCheckoutSession = onCall(
+  { secrets: [STRIPE_SECRET_KEY], region: "us-central1" },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Must be signed in.");
+    }
+    const uid = request.auth.uid;
+    const priceFromClient =
+      request.data && typeof request.data.priceId === "string" ? request.data.priceId.trim() : "";
+    const priceId = priceFromClient || STRIPE_PRICE_PRO.value().trim();
+    if (!priceId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Stripe price is not configured. Set param STRIPE_PRICE_PRO or pass priceId."
+      );
+    }
+
+    const auth = getAuth();
+    const userRecord = await auth.getUser(uid);
+    const email = userRecord.email ? String(userRecord.email) : null;
+
+    const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+    const ud = userDoc.exists ? userDoc.data() || {} : {};
+    let customerId = ud.stripeCustomerId ? String(ud.stripeCustomerId) : null;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: email || undefined,
+        metadata: { firebase_uid: uid },
+      });
+      customerId = customer.id;
+      await userRef.set({ stripeCustomerId: customerId }, { merge: true });
+    }
+
+    const base = (APP_URL || "https://niterun.app").replace(/\/$/, "");
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      client_reference_id: uid,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${base}/app.html?checkout=success`,
+      cancel_url: `${base}/app.html?checkout=cancel`,
+      metadata: { firebase_uid: uid },
+      subscription_data: { metadata: { firebase_uid: uid } },
+    });
+
+    if (!session.url) {
+      throw new HttpsError("internal", "Stripe did not return a checkout URL.");
+    }
+    return { url: session.url };
+  }
+);
+
+const stripeWebhookApp = express();
+stripeWebhookApp.post(
+  "/",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    if (!sig || typeof sig !== "string") {
+      return res.status(400).send("Missing stripe-signature");
+    }
+    let event;
+    try {
+      const stripeVerify = new Stripe(STRIPE_SECRET_KEY.value());
+      event = stripeVerify.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET.value());
+    } catch (err) {
+      console.error("Stripe webhook signature:", err && err.message ? err.message : err);
+      return res.status(400).send(`Webhook Error: ${err.message || err}`);
+    }
+
+    try {
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object;
+          if (session.mode !== "subscription") break;
+          const uid = session.client_reference_id || (session.metadata && session.metadata.firebase_uid);
+          if (!uid) break;
+          const subId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription && session.subscription.id;
+          if (!subId) break;
+          const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+          const sub = await stripe.subscriptions.retrieve(subId);
+          await applySubscriptionToUser(uid, sub);
+          break;
+        }
+        case "customer.subscription.updated":
+        case "customer.subscription.deleted": {
+          const sub = event.data.object;
+          const uid = (sub.metadata && sub.metadata.firebase_uid) || null;
+          if (!uid) break;
+          if (event.type === "customer.subscription.deleted") {
+            await db.collection("users").doc(uid).set(
+              {
+                plan: "free",
+                planStatus: "canceled",
+                stripeSubscriptionId: null,
+                planUpdatedAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+            break;
+          }
+          await applySubscriptionToUser(uid, sub);
+          break;
+        }
+        default:
+          break;
+      }
+    } catch (e) {
+      console.error("Stripe webhook handler error:", e);
+      return res.status(500).send("handler error");
+    }
+    return res.json({ received: true });
+  }
+);
+
+exports.stripeWebhook = onRequest(
+  {
+    cors: false,
+    invoker: "public",
+    region: "us-central1",
+    secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET],
+    memory: "256MiB",
+    timeoutSeconds: 60,
+  },
+  stripeWebhookApp
 );
 
 

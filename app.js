@@ -162,6 +162,7 @@
       renderMilestonesUI();
       updatePlayerNameFieldCopy();
       persistUserLang();
+      refreshSubscriptionUI();
     });
     // Also persist on first load so server-side push uses the right language.
     persistUserLang();
@@ -177,6 +178,7 @@
       setupFriendsCard();
       setupAccountSettings();
       setupPwaSettings();
+      handleCheckoutReturn();
       maybeOfferWalkthrough();
       // Re-subscribe to push (refreshes the FCM token if it rotated; saves it to Firestore).
       try { window.NiteRunPush && window.NiteRunPush.autoResubscribe(user); } catch (e) {}
@@ -3618,6 +3620,49 @@
     });
   }
 
+  /* ---------- STRIPE SUBSCRIPTION (Pro) ---------- */
+  function refreshSubscriptionUI() {
+    var desc = document.getElementById('subscriptionStatusDesc');
+    var btn = document.getElementById('stripeSubscribeBtn');
+    if (!currentUser || typeof db === 'undefined' || !db) return;
+    db.collection('users').doc(currentUser.uid).get().then(function (doc) {
+      var plan = 'free';
+      if (doc.exists) {
+        var d = doc.data() || {};
+        if (d.plan === 'pro') plan = 'pro';
+      }
+      if (desc) {
+        if (plan === 'pro') {
+          desc.textContent = t('app.settings.subscription_active');
+          desc.setAttribute('data-i18n', 'app.settings.subscription_active');
+        } else {
+          desc.textContent = t('app.settings.subscription_inactive');
+          desc.setAttribute('data-i18n', 'app.settings.subscription_inactive');
+        }
+      }
+      if (btn) {
+        btn.disabled = plan === 'pro';
+      }
+    }).catch(function () {});
+  }
+
+  function handleCheckoutReturn() {
+    try {
+      var u = new URL(window.location.href);
+      var c = u.searchParams.get('checkout');
+      if (c === 'success') {
+        showToast(t('toast.subscription_success'), 'success');
+        u.searchParams.delete('checkout');
+        history.replaceState({}, '', u.pathname + (u.search ? u.search : '') + u.hash);
+        setTimeout(function () { refreshSubscriptionUI(); }, 2500);
+      } else if (c === 'cancel') {
+        showToast(t('toast.subscription_cancel'), 'info');
+        u.searchParams.delete('checkout');
+        history.replaceState({}, '', u.pathname + (u.search ? u.search : '') + u.hash);
+      }
+    } catch (e0) {}
+  }
+
   /* ---------- EDIT PROFILE + RESET PASSWORD + EMAIL PREF ---------- */
   function setupAccountSettings() {
     var nameInput = document.getElementById('editDisplayName');
@@ -3820,6 +3865,25 @@
         });
       });
     }
+
+    /* Stripe — Nite-Run Pro (Checkout redirect) */
+    var stripeBtn = document.getElementById('stripeSubscribeBtn');
+    if (stripeBtn && currentUser && functions && typeof functions.httpsCallable === 'function') {
+      stripeBtn.addEventListener('click', function () {
+        if (stripeBtn.disabled) return;
+        showToast(t('toast.checkout_started'), 'info');
+        var fn = functions.httpsCallable('createCheckoutSession');
+        fn({}).then(function (result) {
+          var data = result && result.data ? result.data : {};
+          if (data.url) window.location.href = data.url;
+          else showToast(t('toast.checkout_error'), 'error');
+        }).catch(function (err) {
+          console.error('createCheckoutSession', err);
+          showToast(t('toast.checkout_error'), 'error');
+        });
+      });
+    }
+    refreshSubscriptionUI();
   }
 
   /* ---------- VIEW SWITCHING ---------- */
@@ -3901,6 +3965,8 @@
 
     /* Update stats when viewing stats or profile */
     if (viewName === 'stats' || viewName === 'profile') updateStats();
+
+    if (viewName === 'settings' && currentUser) refreshSubscriptionUI();
 
     if (viewName === 'milestones') renderMilestonesUI();
 
